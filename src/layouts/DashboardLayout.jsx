@@ -18,9 +18,11 @@ import {
   LogOut,
   UserCheck,
   ArrowLeft,
+  AlertTriangle,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 import RealtimeClockWidget from "../components/RealtimeClockWidget.jsx";
+import SOSModal from "../components/SOSModal.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 
 const nav = [
@@ -40,6 +42,7 @@ const nav = [
 export default function DashboardLayout() {
   const { isDemoActive, userName, userEmail, currentAccount, endDemo } = useDemoData();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sosOpen, setSosOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -67,6 +70,17 @@ export default function DashboardLayout() {
           ))}
         </nav>
         <div className="p-4 border-t border-plum-100">
+          {/* Direct SOS Button in Sidebar */}
+          <button
+            type="button"
+            onClick={() => setSosOpen(true)}
+            className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer ring-2 ring-rose-200/80 animate-pulse"
+            title="Open Emergency SOS Protocol"
+          >
+            <AlertTriangle size={15} className="text-white" />
+            <span>SOS Emergency Call</span>
+          </button>
+
           <div className="flex items-center gap-3 px-2 mb-3">
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm shrink-0"
@@ -82,13 +96,13 @@ export default function DashboardLayout() {
           <div className="flex gap-2">
             <button
               onClick={() => navigate("/start")}
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-plum-700 bg-lavender-50 hover:bg-lavender-100 px-2.5 py-2 rounded-lg transition-colors focus-ring"
+              className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-plum-700 bg-lavender-50 hover:bg-lavender-100 px-2.5 py-2 rounded-lg transition-colors focus-ring cursor-pointer"
             >
               <UserCheck size={14} /> Switch
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-plum-500 hover:text-rose-600 px-2.5 py-2 rounded-lg hover:bg-rose-50 transition-colors focus-ring"
+              className="flex items-center justify-center gap-1.5 text-xs font-semibold text-plum-500 hover:text-rose-600 px-2.5 py-2 rounded-lg hover:bg-rose-50 transition-colors focus-ring cursor-pointer"
             >
               <LogOut size={14} /> Log out
             </button>
@@ -113,7 +127,7 @@ export default function DashboardLayout() {
           {location.pathname !== "/app" ? (
             <button
               onClick={() => navigate(-1)}
-              className="p-2 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
+              className="p-2 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold cursor-pointer"
               aria-label="Back to previous page"
               title="Go back"
             >
@@ -123,7 +137,7 @@ export default function DashboardLayout() {
           ) : (
             <button
               onClick={() => navigate("/")}
-              className="p-2 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
+              className="p-2 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold cursor-pointer"
               aria-label="Back to Home"
               title="Home"
             >
@@ -135,8 +149,18 @@ export default function DashboardLayout() {
           <Logo size="sm" withTagline={false} />
         </div>
 
-        {/* Right side: Real-time Clock, Calendar & Sound Widget */}
-        <div className="flex items-center">
+        {/* Right side: SOS Emergency button & Real-time Clock Widget */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => setSosOpen(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black tracking-wider flex items-center gap-1 shadow-xs ring-2 ring-rose-200/90 animate-pulse cursor-pointer shrink-0"
+            title="Open Emergency SOS Protocol"
+            aria-label="Emergency SOS"
+          >
+            <AlertTriangle size={13} className="text-white" />
+            <span>SOS</span>
+          </button>
           <RealtimeClockWidget />
         </div>
       </div>
@@ -221,13 +245,27 @@ export default function DashboardLayout() {
             <span className="text-plum-300">•</span>
             <span className="text-plum-600 font-medium">Your Health. Your Priority.</span>
           </div>
-          <RealtimeClockWidget />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSosOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold tracking-wide flex items-center gap-1.5 shadow-sm ring-2 ring-rose-200/90 transition-all hover:scale-105 cursor-pointer animate-pulse"
+              title="Immediate Emergency Assistance, ER Locator & Care Circle SOS"
+            >
+              <AlertTriangle size={15} className="text-white" />
+              <span>SOS Emergency</span>
+            </button>
+            <RealtimeClockWidget />
+          </div>
         </div>
 
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 lg:py-10">
           <Outlet />
         </div>
       </main>
+
+      {/* Global Emergency SOS Protocol Modal */}
+      <SOSModal isOpen={sosOpen} onClose={() => setSosOpen(false)} />
     </div>
   );
 }

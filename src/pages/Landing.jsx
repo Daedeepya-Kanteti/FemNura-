@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -14,8 +14,10 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
+import SOSModal from "../components/SOSModal.jsx";
 import { Button, Card, SectionHeading, Badge, FadeIn, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 
@@ -85,9 +87,11 @@ const toneMap = {
 };
 
 export default function Landing() {
+  const [sosOpen, setSosOpen] = useState(false);
+
   return (
     <div className="bg-ivory text-charcoal overflow-x-hidden">
-      <Nav />
+      <Nav onOpenSOS={() => setSosOpen(true)} />
       <Hero />
       <TrustStrip />
       <FeaturesSection />
@@ -96,17 +100,18 @@ export default function Landing() {
       <SafetySection />
       <FinalCTA />
       <Footer />
+      <SOSModal isOpen={sosOpen} onClose={() => setSosOpen(false)} />
     </div>
   );
 }
 
-function Nav() {
+function Nav({ onOpenSOS }) {
   const { getLastLoginData, isDemoActive } = useDemoData();
   const { account } = getLastLoginData();
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-ivory/80 border-b border-plum-100">
-      <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between">
         <Logo />
         <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-plum-700/90">
           <a href="#features" className="hover:text-plum-900 transition-colors">Features</a>
@@ -114,15 +119,25 @@ function Nav() {
           <a href="#who" className="hover:text-plum-900 transition-colors">Who it's for</a>
           <a href="#safety" className="hover:text-plum-900 transition-colors">Our approach</a>
         </nav>
-        <div className="flex items-center gap-3">
-          <Link to="/start">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onOpenSOS}
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black tracking-wide flex items-center gap-1.5 shadow-sm ring-2 ring-rose-200/90 animate-pulse transition-transform hover:scale-105 cursor-pointer"
+            title="Open Emergency SOS Protocol"
+            aria-label="Emergency SOS"
+          >
+            <AlertTriangle size={14} className="text-white" />
+            <span>SOS</span>
+          </button>
+          <Link to="/start" className="hidden xs:inline-block">
             <Button variant="ghost" size="sm">
               {account ? "Switch account" : "Log in"}
             </Button>
           </Link>
           <Link to={isDemoActive ? "/app" : "/start"}>
             <Button variant="primary" size="sm">
-              {account ? `Continue as ${account.name}` : "Start Your Health Journey"}
+              {account ? `Continue as ${account.name}` : "Get Started"}
             </Button>
           </Link>
         </div>
