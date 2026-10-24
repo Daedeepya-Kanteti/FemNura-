@@ -4,6 +4,8 @@ import { Plus, HeartPulse, X, Clock, Trash2, Search, Sparkles } from "lucide-rea
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import RemedyModal from "../components/RemedyModal.jsx";
+import { getRemedyForSymptom } from "../data/remedies.js";
 
 const commonSymptoms = [
   "Fatigue",
@@ -32,10 +34,31 @@ export default function SymptomTracker() {
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState("All");
 
+  // Remedy Modal State
+  const [remedyModalOpen, setRemedyModalOpen] = useState(false);
+  const [currentRemedy, setCurrentRemedy] = useState(null);
+  const [remedyTarget, setRemedyTarget] = useState({ name: "", severity: "" });
+
+  const showRemedyFor = (symptomName, symptomSeverity) => {
+    const remedy = getRemedyForSymptom(symptomName);
+    if (remedy) {
+      setCurrentRemedy(remedy);
+      setRemedyTarget({ name: symptomName, severity: symptomSeverity });
+      setRemedyModalOpen(true);
+    }
+  };
+
   const submit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addSymptom({ name: name.trim(), severity, notes: notes.trim() });
+    const symptomName = name.trim();
+    const symptomSeverity = severity;
+
+    addSymptom({ name: symptomName, severity: symptomSeverity, notes: notes.trim() });
+
+    // Instantly provide clinical comfort remedy for the logged symptom
+    showRemedyFor(symptomName, symptomSeverity);
+
     setName("");
     setSeverity("Mild");
     setNotes("");
@@ -220,14 +243,27 @@ export default function SymptomTracker() {
                     <Clock size={12} /> {new Date(s.date).toLocaleString()}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteSymptom(s.id)}
-                  title="Delete entry"
-                  className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
-                >
-                  <Trash2 size={16} />
-                </button>
+
+                <div className="flex items-center gap-2 self-start sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => showRemedyFor(s.name, s.severity)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors shadow-2xs cursor-pointer"
+                    title="View clinical remedy for this symptom"
+                  >
+                    <Sparkles size={12} className="text-rose-500" />
+                    <span>Instant Remedy</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteSymptom(s.id)}
+                    title="Delete entry"
+                    className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -235,6 +271,16 @@ export default function SymptomTracker() {
       </Card>
 
       <Disclaimer compact />
+
+      {/* Instant Evidence-Based Remedy Modal */}
+      <RemedyModal
+        isOpen={remedyModalOpen}
+        onClose={() => setRemedyModalOpen(false)}
+        remedy={currentRemedy}
+        itemType="symptom"
+        itemName={remedyTarget.name}
+        severity={remedyTarget.severity}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,13 +9,36 @@ import {
   Sparkles,
   ArrowRight,
   BellRing,
+  CheckCircle2,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, Disclaimer, FadeIn } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import RemedyModal from "../components/RemedyModal.jsx";
+import { getRemedyForSymptom, getRemedyForMood, getRemedyForCycle } from "../data/remedies.js";
 
 export default function Dashboard() {
   const { userName, symptoms, moods, cycleEntries, reminders, doctorSessions } = useDemoData();
+
+  // Instant Remedy Modal state
+  const [remedyModalOpen, setRemedyModalOpen] = useState(false);
+  const [currentRemedy, setCurrentRemedy] = useState(null);
+  const [modalItemType, setModalItemType] = useState("symptom");
+  const [modalItemName, setModalItemName] = useState("");
+
+  const openRemedy = (type, name) => {
+    let remedy = null;
+    if (type === "symptom") remedy = getRemedyForSymptom(name);
+    else if (type === "mood") remedy = getRemedyForMood(name);
+    else if (type === "cycle") remedy = getRemedyForCycle(name);
+
+    if (remedy) {
+      setCurrentRemedy(remedy);
+      setModalItemType(type);
+      setModalItemName(name);
+      setRemedyModalOpen(true);
+    }
+  };
 
   const activeReminders = reminders.filter((r) => r.active).length;
   const latestMood = moods[0];
@@ -131,6 +154,48 @@ export default function Dashboard() {
         </FadeIn>
       </div>
 
+      {/* Instant Evidence-Based Remedy & Comfort Bar */}
+      <FadeIn className="mb-8">
+        <Card className="p-5 sm:p-6 bg-gradient-to-r from-rose-50/50 via-white to-lavender-50/50 border border-plum-200 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500 text-white shadow-2xs">
+                  <Sparkles size={12} className="text-amber-200" /> Instant Clinical Remedies
+                </span>
+                <span className="text-xs text-plum-500 font-semibold">Researched Relief Guides</span>
+              </div>
+              <h3 className="font-display text-lg font-bold text-plum-950 mt-1">
+                Feeling uncomfortable right now?
+              </h3>
+              <p className="text-xs text-plum-600 max-w-xl">
+                Select an issue below for verified, immediate steps, herbal support, and clinical rationale (ACOG, Cleveland Clinic & Mayo Clinic evidence):
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                { name: "Cramps", type: "symptom", icon: "🌸" },
+                { name: "Fatigue", type: "symptom", icon: "⚡" },
+                { name: "Headache", type: "symptom", icon: "🧠" },
+                { name: "Bloating", type: "symptom", icon: "🍃" },
+                { name: "Low", type: "mood", label: "Low Mood", icon: "💭" },
+                { name: "Luteal", type: "cycle", label: "PMS / Luteal", icon: "🌙" },
+              ].map((item) => (
+                <button
+                  key={item.name}
+                  onClick={() => openRemedy(item.type, item.name)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-plum-800 border border-plum-200 hover:border-plum-400 hover:bg-lavender-50 shadow-2xs transition-all cursor-pointer"
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.label || item.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </FadeIn>
+
       {doctorSessions.length > 0 && (
         <FadeIn className="mb-8">
           <Card className="p-6 sm:p-7">
@@ -148,6 +213,15 @@ export default function Dashboard() {
       )}
 
       <Disclaimer />
+
+      {/* Instant Evidence-Based Remedy Modal */}
+      <RemedyModal
+        isOpen={remedyModalOpen}
+        onClose={() => setRemedyModalOpen(false)}
+        remedy={currentRemedy}
+        itemType={modalItemType}
+        itemName={modalItemName}
+      />
     </div>
   );
 }

@@ -28,8 +28,8 @@ const SEED_DATA_FOR_DEFAULT = {
     { id: 301, phase: "Ovulation", flow: "Medium", notes: "Day 14 - Fertile window", date: new Date(Date.now() - 86400000).toISOString() },
   ],
   reminders: [
-    { id: 401, title: "Drink water reminder", frequency: "Every 2 hours", active: true, kind: "wellness" },
-    { id: 402, title: "Log today's mood", frequency: "Daily, evening", active: true, kind: "mood" },
+    { id: 401, title: "Drink water reminder", frequency: "Every 2 hours", active: true, kind: "interval" },
+    { id: 402, title: "Log today's mood", frequency: "Daily, evening", time: "20:00", active: true, kind: "mood" },
   ],
   vaultFiles: [
     { id: 501, name: "Routine_Blood_Panel_Q3.pdf", size: 428000, category: "Lab report", date: new Date(Date.now() - 86400000 * 12).toISOString() },
@@ -282,6 +282,23 @@ export function DemoDataProvider({ children }) {
     const userStorage = getUserStorage(currentAccount.id) || {};
     const updated = (userStorage.reminders || []).filter((r) => r.id !== id);
     saveUserStorage(currentAccount.id, { ...userStorage, reminders: updated, updatedAt: new Date().toISOString() });
+  };
+
+  const updateReminderTime = (id, newTime) => {
+    if (!currentAccount?.id) return;
+    setReminders((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, time: newTime } : item))
+    );
+
+    const userStorage = getUserStorage(currentAccount.id) || {};
+    const updated = (userStorage.reminders || []).map((item) =>
+      item.id === id ? { ...item, time: newTime } : item
+    );
+    saveUserStorage(currentAccount.id, {
+      ...userStorage,
+      reminders: updated,
+      updatedAt: new Date().toISOString(),
+    });
   };
 
   const setVaultFiles = (updaterOrFiles) => {

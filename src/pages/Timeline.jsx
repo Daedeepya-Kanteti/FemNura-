@@ -1,14 +1,48 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { HeartPulse, Smile, CalendarHeart, History, Search } from "lucide-react";
+import { HeartPulse, Smile, CalendarHeart, History, Search, Sparkles } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Badge, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import RemedyModal from "../components/RemedyModal.jsx";
+import { getRemedyForSymptom, getRemedyForMood, getRemedyForCycle } from "../data/remedies.js";
 
 export default function Timeline() {
   const { symptoms, moods, cycleEntries } = useDemoData();
   const [filterType, setFilterType] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Remedy Modal State
+  const [remedyModalOpen, setRemedyModalOpen] = useState(false);
+  const [currentRemedy, setCurrentRemedy] = useState(null);
+  const [modalItemType, setModalItemType] = useState("symptom");
+  const [modalItemName, setModalItemName] = useState("");
+  const [modalSeverity, setModalSeverity] = useState("");
+
+  const handleOpenRemedy = (event) => {
+    let remedy = null;
+    if (event.type === "symptom") {
+      remedy = getRemedyForSymptom(event.name);
+      setModalItemType("symptom");
+      setModalItemName(event.name);
+      setModalSeverity(event.severity);
+    } else if (event.type === "mood") {
+      remedy = getRemedyForMood(event.mood);
+      setModalItemType("mood");
+      setModalItemName(event.mood);
+      setModalSeverity("");
+    } else if (event.type === "cycle") {
+      remedy = getRemedyForCycle(event.phase);
+      setModalItemType("cycle");
+      setModalItemName(event.phase);
+      setModalSeverity("");
+    }
+
+    if (remedy) {
+      setCurrentRemedy(remedy);
+      setRemedyModalOpen(true);
+    }
+  };
 
   const allEvents = [
     ...symptoms.map((s) => ({ ...s, type: "symptom", icon: HeartPulse, tone: "rose", label: s.name, subtitle: `Severity: ${s.severity}` })),
@@ -117,6 +151,16 @@ export default function Timeline() {
                       {new Date(e.date).toLocaleString()}
                     </p>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenRemedy(e)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-lavender-50 hover:bg-lavender-100 text-plum-800 border border-plum-200/80 transition-colors shadow-2xs self-start shrink-0 cursor-pointer"
+                    title="View clinical comfort & remedy guide"
+                  >
+                    <Sparkles size={12} className="text-rose-500" />
+                    <span className="hidden xs:inline">Remedy</span>
+                  </button>
                 </div>
               </motion.div>
             ))}
@@ -127,6 +171,16 @@ export default function Timeline() {
       <div className="mt-6">
         <Disclaimer compact />
       </div>
+
+      {/* Instant Evidence-Based Remedy Modal */}
+      <RemedyModal
+        isOpen={remedyModalOpen}
+        onClose={() => setRemedyModalOpen(false)}
+        remedy={currentRemedy}
+        itemType={modalItemType}
+        itemName={modalItemName}
+        severity={modalSeverity}
+      />
     </div>
   );
 }

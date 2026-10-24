@@ -41,12 +41,10 @@ export default function RealtimeClockWidget() {
       const currentHHMM = `${currentHH}:${currentMM}`;
       const minuteKey = `${current.getFullYear()}-${current.getMonth()}-${current.getDate()} ${currentHHMM}`;
 
-      // Check all active reminders
+      // Check all active reminders with a scheduled alarm time
       reminders.forEach((r) => {
-        if (!r.active) return;
-        // If reminder has a specific time matching current time
-        const reminderTime = r.time || "09:00";
-        if (reminderTime === currentHHMM) {
+        if (!r.active || !r.time) return;
+        if (r.time === currentHHMM) {
           const reminderKey = `${minuteKey}_${r.id}`;
           if (!firedRef.current[reminderKey]) {
             firedRef.current[reminderKey] = true;

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Smile, Meh, Frown, Angry, Heart, Clock, Trash2 } from "lucide-react";
+import { Smile, Meh, Frown, Angry, Heart, Clock, Trash2, Sparkles } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import RemedyModal from "../components/RemedyModal.jsx";
+import { getRemedyForMood } from "../data/remedies.js";
 
 const moods = [
   { label: "Joyful", icon: Heart, color: "text-rose-500 bg-rose-50" },
@@ -18,9 +20,28 @@ export default function MoodTracker() {
   const [selected, setSelected] = useState(null);
   const [notes, setNotes] = useState("");
 
+  // Remedy Modal State
+  const [remedyModalOpen, setRemedyModalOpen] = useState(false);
+  const [currentRemedy, setCurrentRemedy] = useState(null);
+  const [remedyTarget, setRemedyTarget] = useState("");
+
+  const showRemedyFor = (moodLabel) => {
+    const remedy = getRemedyForMood(moodLabel);
+    if (remedy) {
+      setCurrentRemedy(remedy);
+      setRemedyTarget(moodLabel);
+      setRemedyModalOpen(true);
+    }
+  };
+
   const submit = () => {
     if (!selected) return;
-    addMood({ mood: selected, notes: notes.trim() });
+    const moodLabel = selected;
+    addMood({ mood: moodLabel, notes: notes.trim() });
+
+    // Instantly provide clinical mood comfort guide
+    showRemedyFor(moodLabel);
+
     setSelected(null);
     setNotes("");
   };
@@ -98,21 +119,44 @@ export default function MoodTracker() {
                       <Clock size={12} /> {new Date(e.date).toLocaleString()}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => deleteMood(e.id)}
-                    title="Delete entry"
-                    className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+
+                  <div className="flex items-center gap-2 self-start sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => showRemedyFor(e.mood)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-lavender-50 text-plum-800 hover:bg-lavender-100 border border-lavender-200 transition-colors shadow-2xs cursor-pointer"
+                      title="View evidence-based comfort guide for this mood"
+                    >
+                      <Sparkles size={12} className="text-plum-600" />
+                      <span>Comfort Guide</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deleteMood(e.id)}
+                      title="Delete entry"
+                      className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
         )}
       </Card>
+
       <Disclaimer compact />
+
+      {/* Instant Evidence-Based Mood Remedy Modal */}
+      <RemedyModal
+        isOpen={remedyModalOpen}
+        onClose={() => setRemedyModalOpen(false)}
+        remedy={currentRemedy}
+        itemType="mood"
+        itemName={remedyTarget}
+      />
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { CalendarHeart, Droplet, Clock, Trash2 } from "lucide-react";
+import { CalendarHeart, Droplet, Clock, Trash2, Sparkles } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import RemedyModal from "../components/RemedyModal.jsx";
+import { getRemedyForCycle } from "../data/remedies.js";
 
 const phases = [
   { label: "Menstrual", color: "rose" },
@@ -20,10 +22,29 @@ export default function CycleTracker() {
   const [flow, setFlow] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Remedy Modal State
+  const [remedyModalOpen, setRemedyModalOpen] = useState(false);
+  const [currentRemedy, setCurrentRemedy] = useState(null);
+  const [remedyTarget, setRemedyTarget] = useState("");
+
+  const showRemedyFor = (phaseLabel) => {
+    const remedy = getRemedyForCycle(phaseLabel);
+    if (remedy) {
+      setCurrentRemedy(remedy);
+      setRemedyTarget(phaseLabel);
+      setRemedyModalOpen(true);
+    }
+  };
+
   const submit = (e) => {
     e.preventDefault();
     if (!phase) return;
-    addCycleEntry({ phase, flow, notes: notes.trim() });
+    const selectedPhase = phase;
+    addCycleEntry({ phase: selectedPhase, flow, notes: notes.trim() });
+
+    // Instantly provide clinical phase nutrition & comfort protocol
+    showRemedyFor(selectedPhase);
+
     setPhase("");
     setFlow("");
     setNotes("");
@@ -117,20 +138,43 @@ export default function CycleTracker() {
                     <Clock size={12} /> {new Date(c.date).toLocaleString()}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteCycleEntry(c.id)}
-                  title="Delete entry"
-                  className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
-                >
-                  <Trash2 size={16} />
-                </button>
+
+                <div className="flex items-center gap-2 self-start sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => showRemedyFor(c.phase)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-plum-50 text-plum-900 hover:bg-plum-100 border border-plum-200 transition-colors shadow-2xs cursor-pointer"
+                    title="View evidence-based care & nutrition guide for this phase"
+                  >
+                    <Sparkles size={12} className="text-rose-500" />
+                    <span>Phase Guide</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => deleteCycleEntry(c.id)}
+                    title="Delete entry"
+                    className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </motion.div>
             ))}
           </div>
         )}
       </Card>
+
       <Disclaimer compact />
+
+      {/* Instant Evidence-Based Cycle Remedy Modal */}
+      <RemedyModal
+        isOpen={remedyModalOpen}
+        onClose={() => setRemedyModalOpen(false)}
+        remedy={currentRemedy}
+        itemType="cycle"
+        itemName={remedyTarget}
+      />
     </div>
   );
 }
