@@ -1,0 +1,7 @@
+{
+  "name": "FemNura",
+  "description": "FemNura is an AI-assisted women's healthcare companion for symptom tracking, mood wellness, menstrual health, and doctor-visit preparation with saved credentials and persistent health records.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
