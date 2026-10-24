@@ -75,7 +75,22 @@ function safeLocalStorageSet(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.warn("localStorage write failed:", e);
+    console.warn("localStorage write failed, attempting payload optimization:", e);
+    try {
+      if (value && typeof value === "object" && Array.isArray(value.vaultFiles)) {
+        // Strip or trim very large dataUrls (> 80KB) from persistent storage to prevent quota crash
+        const optimized = {
+          ...value,
+          vaultFiles: value.vaultFiles.map((vf) => ({
+            ...vf,
+            dataUrl: vf.dataUrl && vf.dataUrl.length > 80000 ? null : vf.dataUrl,
+          })),
+        };
+        localStorage.setItem(key, JSON.stringify(optimized));
+      }
+    } catch (e2) {
+      console.warn("localStorage recovery write failed:", e2);
+    }
   }
 }
 

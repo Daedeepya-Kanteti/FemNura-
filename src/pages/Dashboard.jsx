@@ -10,6 +10,7 @@ import {
   ArrowRight,
   BellRing,
   CheckCircle2,
+  FileText,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, Disclaimer, FadeIn } from "../components/UI.jsx";
@@ -121,8 +122,8 @@ export default function Dashboard() {
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <QuickAction to="/app/symptoms" label="Log a symptom" desc="Takes under a minute" icon={HeartPulse} />
+              <QuickAction to="/app/vault" label="Medical Vault" desc="Upload reports & prescriptions" icon={FileText} />
               <QuickAction to="/app/mood" label="Log your mood" desc="How are you feeling today?" icon={Smile} />
-              <QuickAction to="/app/cycle" label="Update your cycle" desc="Track your current phase" icon={CalendarHeart} />
               <QuickAction to="/app/doctor-qgen" label="Prepare for a visit" desc="Generate doctor questions" icon={Stethoscope} />
             </div>
           </Card>
