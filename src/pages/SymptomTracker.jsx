@@ -1,13 +1,23 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, HeartPulse, X, Clock, Trash2 } from "lucide-react";
+import { Plus, HeartPulse, X, Clock, Trash2, Mic, MicOff, Search, Sparkles } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 
 const commonSymptoms = [
-  "Fatigue", "Headache", "Bloating", "Cramps", "Nausea", "Back pain",
-  "Breast tenderness", "Low appetite", "Insomnia", "Dizziness", "Joint pain", "Skin changes",
+  "Fatigue",
+  "Headache",
+  "Bloating",
+  "Cramps",
+  "Nausea",
+  "Back pain",
+  "Breast tenderness",
+  "Low appetite",
+  "Insomnia",
+  "Dizziness",
+  "Joint pain",
+  "Skin changes",
 ];
 
 const severities = ["Mild", "Moderate", "Severe"];
@@ -18,6 +28,63 @@ export default function SymptomTracker() {
   const [name, setName] = useState("");
   const [severity, setSeverity] = useState("Mild");
   const [notes, setNotes] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTarget, setVoiceTarget] = useState(null); // 'name' | 'notes'
+  const [voiceNotice, setVoiceNotice] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("All");
+
+  const startVoiceInput = (targetField) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceNotice("Voice recognition is not supported in this browser. Please type directly.");
+      setTimeout(() => setVoiceNotice(""), 3500);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      setIsListening(true);
+      setVoiceTarget(targetField);
+      setVoiceNotice(`Listening... Describe your ${targetField === "name" ? "symptom" : "notes"}`);
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (targetField === "name") {
+          setName((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        } else {
+          setNotes((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+        setIsListening(false);
+        setVoiceTarget(null);
+        setVoiceNotice("");
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+        setVoiceTarget(null);
+        setVoiceNotice("Could not access microphone. Please type your entry.");
+        setTimeout(() => setVoiceNotice(""), 3000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setVoiceTarget(null);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+      setVoiceTarget(null);
+      setVoiceNotice("Microphone unavailable. Please type your entry.");
+      setTimeout(() => setVoiceNotice(""), 3000);
+    }
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -28,6 +95,14 @@ export default function SymptomTracker() {
     setNotes("");
     setShowForm(false);
   };
+
+  const filteredSymptoms = symptoms.filter((s) => {
+    const matchesSeverity = severityFilter === "All" || s.severity === severityFilter;
+    const matchesQuery =
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.notes && s.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesSeverity && matchesQuery;
+  });
 
   return (
     <div>
@@ -51,25 +126,44 @@ export default function SymptomTracker() {
             transition={{ duration: 0.3 }}
             className="overflow-hidden mb-6"
           >
-            <Card className="p-6 sm:p-7">
+            <Card className="p-6 sm:p-7 shadow-sm border-plum-200">
               <form onSubmit={submit} className="space-y-5">
                 <div>
-                  <label className="text-sm font-semibold text-plum-700 block mb-2">What are you experiencing?</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-plum-700">What are you experiencing? *</label>
+                    <button
+                      type="button"
+                      onClick={() => startVoiceInput("name")}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        isListening && voiceTarget === "name"
+                          ? "bg-rose-500 text-white animate-pulse"
+                          : "text-plum-600 bg-lavender-50 hover:bg-lavender-100"
+                      }`}
+                      title="Speak to dictate symptom"
+                    >
+                      {isListening && voiceTarget === "name" ? <MicOff size={13} /> : <Mic size={13} />}
+                      <span>{isListening && voiceTarget === "name" ? "Listening..." : "Voice log"}</span>
+                    </button>
+                  </div>
+
                   <input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Fatigue, headache, bloating..."
-                    className="w-full rounded-xl border border-plum-200 px-4 py-3 focus-ring bg-ivory/60"
+                    placeholder="e.g. Fatigue, headache, lower back pain..."
+                    className="w-full rounded-xl border border-plum-200 px-4 py-3 focus-ring bg-white text-plum-900"
                     autoFocus
                   />
+
                   <div className="flex flex-wrap gap-2 mt-3">
                     {commonSymptoms.map((s) => (
                       <button
                         type="button"
                         key={s}
                         onClick={() => setName(s)}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                          name === s ? "bg-plum-700 text-white border-plum-700" : "bg-white text-plum-600 border-plum-200 hover:border-plum-400"
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
+                          name === s
+                            ? "bg-plum-700 text-white border-plum-700"
+                            : "bg-white text-plum-600 border-plum-200 hover:border-plum-400"
                         }`}
                       >
                         {s}
@@ -77,6 +171,7 @@ export default function SymptomTracker() {
                     ))}
                   </div>
                 </div>
+
                 <div>
                   <label className="text-sm font-semibold text-plum-700 block mb-2">Severity</label>
                   <div className="flex gap-2">
@@ -85,8 +180,10 @@ export default function SymptomTracker() {
                         type="button"
                         key={s}
                         onClick={() => setSeverity(s)}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
-                          severity === s ? "bg-rose-500 text-white border-rose-500" : "bg-white text-plum-600 border-plum-200"
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors cursor-pointer ${
+                          severity === s
+                            ? "bg-rose-500 text-white border-rose-500"
+                            : "bg-white text-plum-600 border-plum-200 hover:border-plum-300"
                         }`}
                       >
                         {s}
@@ -94,18 +191,41 @@ export default function SymptomTracker() {
                     ))}
                   </div>
                 </div>
+
                 <div>
-                  <label className="text-sm font-semibold text-plum-700 block mb-2">Notes (optional)</label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-plum-700">Notes (optional)</label>
+                    <button
+                      type="button"
+                      onClick={() => startVoiceInput("notes")}
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
+                        isListening && voiceTarget === "notes"
+                          ? "bg-rose-500 text-white animate-pulse"
+                          : "text-plum-600 bg-lavender-50 hover:bg-lavender-100"
+                      }`}
+                      title="Speak to dictate notes"
+                    >
+                      {isListening && voiceTarget === "notes" ? <MicOff size={13} /> : <Mic size={13} />}
+                      <span>{isListening && voiceTarget === "notes" ? "Listening..." : "Dictate notes"}</span>
+                    </button>
+                  </div>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     rows={3}
-                    placeholder="Any context that might help later — when it started, what makes it better or worse..."
-                    className="w-full rounded-xl border border-plum-200 px-4 py-3 focus-ring bg-ivory/60 resize-none"
+                    placeholder="Any helpful context — when it started, triggers, what makes it better or worse..."
+                    className="w-full rounded-xl border border-plum-200 px-4 py-3 focus-ring bg-white text-plum-900 resize-none"
                   />
                 </div>
+
+                {voiceNotice && (
+                  <p className="text-xs text-rose-600 font-medium bg-rose-50 p-2.5 rounded-lg border border-rose-100">
+                    {voiceNotice}
+                  </p>
+                )}
+
                 <Button type="submit" variant="primary" className="w-full justify-center" disabled={!name.trim()}>
-                  Save entry
+                  Save Symptom Entry
                 </Button>
               </form>
             </Card>
@@ -114,22 +234,62 @@ export default function SymptomTracker() {
       </AnimatePresence>
 
       <Card className="p-6 sm:p-7 mb-6">
-        <h2 className="font-display text-lg font-semibold text-plum-800 mb-5">Your symptom log</h2>
-        {symptoms.length === 0 ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+          <h2 className="font-display text-lg font-semibold text-plum-800">Your Symptom Log</h2>
+
+          {/* Filters & Search */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-plum-400" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search logs..."
+                className="rounded-xl border border-plum-200 pl-8 pr-3 py-1.5 text-xs text-plum-800 focus-ring bg-ivory/50"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-ivory p-1 rounded-xl border border-plum-200/80">
+              {["All", "Mild", "Moderate", "Severe"].map((sev) => (
+                <button
+                  key={sev}
+                  onClick={() => setSeverityFilter(sev)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    severityFilter === sev ? "bg-plum-700 text-white" : "text-plum-600 hover:text-plum-900"
+                  }`}
+                >
+                  {sev}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {filteredSymptoms.length === 0 ? (
           <EmptyState
             icon={<HeartPulse size={24} />}
-            title="No symptoms logged yet"
-            description="When you log your first symptom, it will appear here — and begin forming a timeline you can bring to a doctor's visit."
-            action={<Button variant="secondary" size="sm" onClick={() => setShowForm(true)}>Log your first symptom</Button>}
+            title={symptoms.length === 0 ? "No symptoms logged yet" : "No matching symptoms"}
+            description={
+              symptoms.length === 0
+                ? "When you log your first symptom, it will appear here — and begin forming a timeline you can bring to a doctor's visit."
+                : "No entries match your search query or severity filter."
+            }
+            action={
+              symptoms.length === 0 ? (
+                <Button variant="secondary" size="sm" onClick={() => setShowForm(true)}>
+                  Log your first symptom
+                </Button>
+              ) : null
+            }
           />
         ) : (
           <div className="space-y-3">
-            {symptoms.map((s) => (
+            {filteredSymptoms.map((s) => (
               <motion.div
                 key={s.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-4 p-4 rounded-2xl border border-plum-100 hover:border-plum-200 transition-colors"
+                className="flex items-start gap-4 p-4 rounded-2xl border border-plum-100 hover:border-plum-200 transition-colors bg-white shadow-2xs"
               >
                 <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                   <HeartPulse size={18} />
@@ -137,9 +297,11 @@ export default function SymptomTracker() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-plum-800">{s.name}</p>
-                    <Badge tone={s.severity === "Severe" ? "rose" : s.severity === "Moderate" ? "plum" : "sage"}>{s.severity}</Badge>
+                    <Badge tone={s.severity === "Severe" ? "rose" : s.severity === "Moderate" ? "plum" : "sage"}>
+                      {s.severity}
+                    </Badge>
                   </div>
-                  {s.notes && <p className="text-sm text-plum-500 mt-1">{s.notes}</p>}
+                  {s.notes && <p className="text-sm text-plum-600 mt-1">{s.notes}</p>}
                   <p className="text-xs text-plum-400 mt-2 flex items-center gap-1">
                     <Clock size={12} /> {new Date(s.date).toLocaleString()}
                   </p>

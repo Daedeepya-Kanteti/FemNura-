@@ -61,7 +61,7 @@ export default function Onboarding() {
 
     registerOrLogin({
       name: name.trim(),
-      email: email.trim() || `${name.trim().toLowerCase().replace(/\s+/g, "")}@femnura.app`,
+      email: email.trim() || `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}_${Date.now().toString().slice(-4)}@femnura.app`,
       password,
       focus,
     });
@@ -84,9 +84,16 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-grad-hero flex flex-col items-center justify-center px-6 py-12">
-      <div className="mb-8">
+      <div className="w-full max-w-lg flex items-center justify-between mb-6">
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-plum-600 hover:text-plum-950 bg-white/80 hover:bg-white border border-plum-200/80 px-3 py-1.5 rounded-xl transition-all shadow-xs focus-ring"
+        >
+          <ArrowLeft size={14} /> Back to Home
+        </button>
         <Link to="/">
-          <Logo size="lg" />
+          <Logo size="sm" />
         </Link>
       </div>
 
@@ -180,9 +187,18 @@ export default function Onboarding() {
                   <UserPlus size={16} /> Use another account
                 </Button>
 
-                <div className="flex items-center justify-center gap-2 text-xs text-plum-500 pt-3">
-                  <ShieldCheck size={14} className="text-sage-600" />
-                  Your login credentials & health data are saved securely to your browser.
+                <div className="flex flex-col items-center justify-center gap-2 text-xs text-plum-500 pt-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={14} className="text-sage-600" />
+                    <span>Your login credentials & health data are saved securely.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    className="text-xs text-plum-500 hover:text-plum-800 font-semibold inline-flex items-center gap-1 mt-1 cursor-pointer"
+                  >
+                    <ArrowLeft size={13} /> Return to Home page
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -199,12 +215,21 @@ export default function Onboarding() {
             >
               <div className="flex items-center justify-between mb-5">
                 <h1 className="font-display text-2xl font-semibold text-plum-900">Sign in to FemNura</h1>
-                {savedAccounts.length > 0 && (
+                {savedAccounts.length > 0 ? (
                   <button
+                    type="button"
                     onClick={() => setView("choose_account")}
-                    className="text-xs font-semibold text-plum-600 hover:text-plum-900 flex items-center gap-1 bg-lavender-100/60 hover:bg-lavender-100 px-3 py-1.5 rounded-lg transition-colors"
+                    className="text-xs font-semibold text-plum-600 hover:text-plum-900 flex items-center gap-1 bg-lavender-100/60 hover:bg-lavender-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
                   >
                     <ArrowLeft size={13} /> Saved accounts ({savedAccounts.length})
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/")}
+                    className="text-xs font-semibold text-plum-600 hover:text-plum-900 flex items-center gap-1 bg-lavender-100/60 hover:bg-lavender-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <ArrowLeft size={13} /> Back to Home
                   </button>
                 )}
               </div>
@@ -311,16 +336,24 @@ export default function Onboarding() {
                 </div>
               </form>
 
-              {savedAccounts.length > 0 && (
-                <div className="text-center mt-5 pt-4 border-t border-plum-100">
+              <div className="text-center mt-5 pt-4 border-t border-plum-100 flex items-center justify-center gap-4">
+                {savedAccounts.length > 0 && (
                   <button
+                    type="button"
                     onClick={() => setView("choose_account")}
-                    className="text-xs text-plum-500 hover:text-plum-800 font-semibold inline-flex items-center gap-1"
+                    className="text-xs text-plum-500 hover:text-plum-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
                   >
                     <ArrowLeft size={13} /> Back to saved accounts
                   </button>
-                </div>
-              )}
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate("/")}
+                  className="text-xs text-plum-400 hover:text-plum-700 font-medium inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <ArrowLeft size={13} /> Back to Home
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

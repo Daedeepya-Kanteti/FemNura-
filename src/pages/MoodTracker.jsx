@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Smile, Meh, Frown, Angry, Heart, Clock, Trash2 } from "lucide-react";
+import { Smile, Meh, Frown, Angry, Heart, Clock, Trash2, Mic } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
@@ -51,6 +51,30 @@ export default function MoodTracker() {
               <span className="text-xs font-semibold text-plum-700">{m.label}</span>
             </motion.button>
           ))}
+        </div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-semibold text-plum-600 uppercase tracking-wide">
+            Reflections / triggers (optional)
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+              if (!SpeechRecognition) return;
+              try {
+                const rec = new SpeechRecognition();
+                rec.onresult = (e) => {
+                  const t = e.results[0][0].transcript;
+                  setNotes((p) => (p ? `${p} ${t}` : t));
+                };
+                rec.start();
+              } catch {}
+            }}
+            className="text-xs font-semibold px-2.5 py-1 rounded-lg text-plum-600 bg-lavender-50 hover:bg-lavender-100 flex items-center gap-1 cursor-pointer transition-colors"
+            title="Dictate reflection"
+          >
+            <Mic size={13} /> Voice note
+          </button>
         </div>
         <textarea
           value={notes}

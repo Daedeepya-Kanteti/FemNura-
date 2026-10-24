@@ -24,6 +24,9 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
+        showBack={true}
+        backTo="/"
+        backLabel="Back to Home"
         eyebrow="Your dashboard"
         title={`Good to see you, ${userName || "Friend"} 🌿`}
         subtitle="Here's a gentle overview of where things stand. Nothing is tracked unless you log it."

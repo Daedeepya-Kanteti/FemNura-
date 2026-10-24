@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -17,6 +17,7 @@ import {
   X,
   LogOut,
   UserCheck,
+  ArrowLeft,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
@@ -39,6 +40,7 @@ export default function DashboardLayout() {
   const { isDemoActive, userName, userEmail, currentAccount, endDemo } = useDemoData();
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!isDemoActive) navigate("/start");
@@ -94,9 +96,30 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-b border-plum-100 flex items-center justify-between px-5 h-16">
-        <Logo size="sm" withTagline={false} />
-        <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-plum-700 focus-ring">
+      <div className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-b border-plum-100 flex items-center justify-between px-4 h-16">
+        <div className="flex items-center gap-2">
+          {location.pathname !== "/app" ? (
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 -ml-1.5 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
+              aria-label="Back to previous page"
+            >
+              <ArrowLeft size={19} />
+              <span className="hidden xs:inline">Back</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/")}
+              className="p-2 -ml-1.5 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
+              aria-label="Back to Home"
+            >
+              <ArrowLeft size={19} />
+              <span className="hidden xs:inline">Home</span>
+            </button>
+          )}
+          <Logo size="sm" withTagline={false} />
+        </div>
+        <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-plum-700 focus-ring" aria-label="Open menu">
           <Menu size={24} />
         </button>
       </div>
