@@ -292,17 +292,19 @@ function DashboardPreview() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between bg-plum-800 rounded-2xl p-4 text-white shadow-sm">
+        <div className="flex items-center justify-between bg-gradient-to-r from-plum-900 to-plum-950 rounded-2xl p-4 text-white shadow-sm border border-plum-700">
           <div className="flex items-center gap-3">
-            <Sparkles size={18} className="text-lavender-200" />
-            <p className="text-sm font-semibold">
+            <span className="w-8 h-8 rounded-lg bg-rose-500/30 text-rose-300 flex items-center justify-center shrink-0 border border-rose-400/40">
+              <Sparkles size={17} className="text-amber-300" />
+            </span>
+            <p className="text-sm font-bold text-white">
               {questionsCount > 0
                 ? `${questionsCount} question${questionsCount === 1 ? "" : "s"} ready for your doctor visit`
                 : "Ready to generate doctor questions"}
             </p>
           </div>
-          <Link to="/app/doctor-qgen" className="text-xs font-semibold text-lavender-200 hover:text-white underline">
-            View
+          <Link to="/app/doctor-qgen" className="text-xs font-bold text-amber-300 hover:text-white underline pl-2">
+            View Sheet →
           </Link>
         </div>
       </Card>

@@ -20,6 +20,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
+import RealtimeClockWidget from "../components/RealtimeClockWidget.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 
 const nav = [
@@ -119,9 +120,12 @@ export default function DashboardLayout() {
           )}
           <Logo size="sm" withTagline={false} />
         </div>
-        <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-plum-700 focus-ring" aria-label="Open menu">
-          <Menu size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          <RealtimeClockWidget />
+          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-plum-700 focus-ring" aria-label="Open menu">
+            <Menu size={24} />
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -192,6 +196,16 @@ export default function DashboardLayout() {
       </AnimatePresence>
 
       <main className="flex-1 lg:ml-72 pt-16 lg:pt-0 min-h-screen">
+        {/* Desktop sticky top bar with real-time clock & calendar */}
+        <div className="hidden lg:flex items-center justify-between px-8 py-3.5 bg-white/80 backdrop-blur-md border-b border-plum-100/70 sticky top-0 z-30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-plum-600">
+            <span className="font-display text-plum-900 font-bold tracking-wide">FemNura</span>
+            <span className="text-plum-300">•</span>
+            <span className="text-plum-600 font-medium">Your Health. Your Priority.</span>
+          </div>
+          <RealtimeClockWidget />
+        </div>
+
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8 lg:py-10">
           <Outlet />
         </div>

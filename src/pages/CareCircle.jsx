@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import QRCode from "qrcode";
 import {
   Users,
   Plus,
@@ -12,6 +14,8 @@ import {
   Check,
   Heart,
   AlertCircle,
+  ExternalLink,
+  Eye,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer, Badge } from "../components/UI.jsx";
@@ -21,12 +25,15 @@ export default function CareCircle() {
   const {
     userName,
     userEmail,
+    currentAccount,
     trustedContacts,
     addTrustedContact,
     removeTrustedContact,
     emergencyProfile,
     updateEmergencyProfile,
   } = useDemoData();
+
+  const [qrDataUrl, setQrDataUrl] = useState("");
 
   const [name, setName] = useState("");
   const [relation, setRelation] = useState("");
@@ -39,6 +46,27 @@ export default function CareCircle() {
   const [emergencyNotes, setEmergencyNotes] = useState(
     emergencyProfile?.emergencyNotes || "Please contact my primary emergency contact immediately."
   );
+
+  const primaryContact = trustedContacts[0] || { name: "", phone: "", relation: "Primary contact" };
+  const secondaryContact = trustedContacts[1] || { name: "", phone: "", relation: "Secondary contact" };
+
+  const currentEmergencyUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/emergency?uid=${encodeURIComponent(currentAccount?.id || "default")}&name=${encodeURIComponent(userName || "Friend")}&bg=${encodeURIComponent(bloodGroup || "O+")}&al=${encodeURIComponent(allergies || "None")}&cd=${encodeURIComponent(conditions || "None")}&nt=${encodeURIComponent(emergencyNotes || "Call contact immediately.")}&c1n=${encodeURIComponent(primaryContact.name || "")}&c1p=${encodeURIComponent(primaryContact.phone || "")}&c1r=${encodeURIComponent(primaryContact.relation || "")}&c2n=${encodeURIComponent(secondaryContact.name || "")}&c2p=${encodeURIComponent(secondaryContact.phone || "")}&c2r=${encodeURIComponent(secondaryContact.relation || "")}`
+    : "";
+
+  useEffect(() => {
+    if (!currentEmergencyUrl) return;
+    QRCode.toDataURL(currentEmergencyUrl, {
+      width: 280,
+      margin: 1,
+      color: {
+        dark: "#361638",
+        light: "#ffffff",
+      },
+    })
+      .then((url) => setQrDataUrl(url))
+      .catch((err) => console.error("Could not generate emergency QR:", err));
+  }, [currentEmergencyUrl]);
 
   const submitContact = (e) => {
     e.preventDefault();
@@ -67,38 +95,43 @@ export default function CareCircle() {
       return;
     }
 
-    const primaryContact = trustedContacts[0] || { name: "Not assigned", phone: "N/A", relation: "N/A" };
-
     const html = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>FemNura Emergency Medical Wallet Card</title>
+          <title>FemNura Emergency Medical Wallet Card - ${userName || "Patient"}</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; color: #2e1f2d; }
-            .card { width: 340px; border: 2px solid #5f3860; border-radius: 12px; padding: 18px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
-            .badge { background: #e53e3e; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-            h2 { margin: 8px 0 2px 0; font-size: 18px; color: #5f3860; }
-            .row { margin: 6px 0; font-size: 13px; }
-            .label { font-weight: bold; color: #666; font-size: 11px; text-transform: uppercase; }
-            .val { font-weight: 600; color: #222; }
-            .qr-placeholder { margin-top: 12px; text-align: center; border: 1px dashed #aaa; padding: 10px; font-size: 11px; color: #666; border-radius: 6px; }
-            .footer { font-size: 10px; color: #888; margin-top: 10px; text-align: center; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #2e1f2d; background: #fafafa; }
+            .card { width: 360px; border: 2px solid #5f3860; border-radius: 14px; padding: 20px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.1); margin: 0 auto; }
+            .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+            h2 { margin: 10px 0 4px 0; font-size: 20px; color: #421845; }
+            .row { margin: 7px 0; font-size: 13px; line-height: 1.4; }
+            .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; }
+            .val { font-weight: 600; color: #1e1120; }
+            .qr-section { margin-top: 14px; text-align: center; border-top: 1px dashed #d1c4d4; padding-top: 12px; }
+            .qr-img { width: 130px; height: 130px; border-radius: 8px; border: 1px solid #ddd; }
+            .qr-instruction { font-size: 11px; color: #666; margin-top: 6px; font-weight: 500; }
+            .footer { font-size: 10px; color: #888; margin-top: 12px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
           </style>
         </head>
         <body>
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="badge">EMERGENCY MEDICAL ID</span>
-              <strong style="color:#5f3860; font-size:14px;">FemNura</strong>
+              <strong style="color:#5f3860; font-size:15px; letter-spacing:0.5px;">FemNura</strong>
             </div>
             <h2>${userName || "Patient"}</h2>
-            <div class="row"><span class="label">Blood Group:</span> <span class="val">${bloodGroup}</span></div>
-            <div class="row"><span class="label">Allergies:</span> <span class="val">${allergies || "None"}</span></div>
-            <div class="row"><span class="label">Medical Conditions:</span> <span class="val">${conditions || "None"}</span></div>
-            <div class="row"><span class="label">Emergency Contact:</span> <span class="val">${primaryContact.name} (${primaryContact.relation}) - ${primaryContact.phone}</span></div>
-            <div class="row"><span class="label">Emergency Notes:</span> <span class="val">${emergencyNotes || "Call contact immediately."}</span></div>
-            <div class="footer">Fold & carry in wallet. FemNura — Your Health. Your Priority.</div>
+            <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:15px;">${bloodGroup}</span></div>
+            <div class="row"><span class="label">Known Conditions:</span> <span class="val">${conditions || "None declared"}</span></div>
+            <div class="row"><span class="label">Allergies:</span> <span class="val">${allergies || "None declared"}</span></div>
+            <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryContact.name ? `${primaryContact.name} (${primaryContact.relation}) - ${primaryContact.phone}` : "Not assigned"}</span></div>
+            <div class="row"><span class="label">Emergency Note:</span> <span class="val">${emergencyNotes || "Call primary contact immediately."}</span></div>
+            
+            <div class="qr-section">
+              ${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-img" alt="Scannable Emergency QR" />` : ""}
+              <div class="qr-instruction">Scan with any phone camera to view full emergency profile & 1-click call contact</div>
+            </div>
+            <div class="footer">Fold and carry in wallet or purse. FemNura — Your Health. Your Priority.</div>
           </div>
           <script>window.onload = function() { window.print(); };</script>
         </body>
@@ -212,48 +245,50 @@ export default function CareCircle() {
             </div>
 
             <div>
-              <div className="flex items-center justify-center p-3.5 bg-white rounded-2xl border border-plum-200/80 mb-3 shadow-2xs">
-                {/* Visual SVG QR Code Matrix */}
-                <div className="flex flex-col items-center text-center">
-                  <svg width="110" height="110" viewBox="0 0 110 110" className="text-plum-900">
-                    {/* Corner Position Targets */}
-                    <rect x="5" y="5" width="30" height="30" rx="3" fill="#5f3860" />
-                    <rect x="10" y="10" width="20" height="20" fill="white" />
-                    <rect x="15" y="15" width="10" height="10" fill="#5f3860" />
-
-                    <rect x="75" y="5" width="30" height="30" rx="3" fill="#5f3860" />
-                    <rect x="80" y="10" width="20" height="20" fill="white" />
-                    <rect x="85" y="15" width="10" height="10" fill="#5f3860" />
-
-                    <rect x="5" y="75" width="30" height="30" rx="3" fill="#5f3860" />
-                    <rect x="10" y="80" width="20" height="20" fill="white" />
-                    <rect x="15" y="85" width="10" height="10" fill="#5f3860" />
-
-                    {/* Matrix Mock Pattern */}
-                    <circle cx="55" cy="20" r="3" fill="#9c5765" />
-                    <circle cx="45" cy="30" r="3" fill="#5f3860" />
-                    <circle cx="65" cy="30" r="3" fill="#5f3860" />
-                    <circle cx="55" cy="55" r="5" fill="#7a5689" />
-                    <circle cx="20" cy="55" r="3" fill="#5f3860" />
-                    <circle cx="90" cy="55" r="3" fill="#5f3860" />
-                    <circle cx="45" cy="80" r="3" fill="#9c5765" />
-                    <circle cx="65" cy="80" r="3" fill="#5f3860" />
-                    <circle cx="55" cy="90" r="3" fill="#5f3860" />
-                  </svg>
-                  <p className="text-[11px] font-semibold text-plum-600 mt-1 flex items-center gap-1">
-                    <QrCode size={12} /> Emergency Scannable Card
-                  </p>
-                </div>
+              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-plum-200/80 mb-3 shadow-2xs text-center">
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt={`Emergency QR Code for ${userName}`}
+                    className="w-36 h-36 rounded-xl border border-plum-100 shadow-2xs"
+                  />
+                ) : (
+                  <div className="w-36 h-36 bg-lavender-50 rounded-xl flex items-center justify-center text-xs text-plum-400">
+                    Generating QR...
+                  </div>
+                )}
+                <p className="text-[11px] font-bold text-plum-700 mt-2 flex items-center gap-1">
+                  <QrCode size={13} className="text-rose-500" /> Scannable First Responder QR
+                </p>
+                <p className="text-[10px] text-plum-400 mt-0.5">
+                  Unique to {userName}'s account & medical profile
+                </p>
               </div>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handlePrintCard}
-                className="w-full justify-center text-xs font-semibold gap-1.5"
-              >
-                <Printer size={14} /> Print Wallet Card
-              </Button>
+              <div className="space-y-2">
+                <Link
+                  to={currentEmergencyUrl.replace(window.location.origin, "")}
+                  target="_blank"
+                  className="w-full block"
+                >
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full justify-center text-xs font-semibold gap-1.5 border-plum-200 hover:border-plum-400 text-plum-800"
+                  >
+                    <Eye size={14} className="text-plum-600" /> Preview Emergency Scan View
+                  </Button>
+                </Link>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handlePrintCard}
+                  className="w-full justify-center text-xs font-semibold gap-1.5 bg-plum-800 hover:bg-plum-900"
+                >
+                  <Printer size={14} /> Print Wallet Card (with QR)
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

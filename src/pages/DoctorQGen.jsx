@@ -256,9 +256,9 @@ export default function DoctorQGen() {
                 </div>
               </div>
 
-              <div className="bg-lavender-50/60 rounded-2xl p-4 sm:p-5 mb-5 border border-lavender-100">
-                <p className="text-xs font-bold uppercase tracking-wider text-plum-600 mb-3">
-                  Questions to ask your physician:
+              <div className="bg-lavender-50/80 rounded-2xl p-4 sm:p-5 mb-5 border border-lavender-200 shadow-2xs">
+                <p className="text-xs font-extrabold uppercase tracking-wider text-plum-900 mb-3 flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-rose-500" /> Questions to ask your physician:
                 </p>
                 <ul className="space-y-3">
                   {result.questions.map((q, i) => (
@@ -267,12 +267,12 @@ export default function DoctorQGen() {
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.08 }}
-                      className="flex gap-3 text-sm text-plum-800 bg-white rounded-xl p-3.5 shadow-2xs border border-plum-100/80"
+                      className="flex gap-3 text-sm text-plum-950 font-medium bg-white rounded-xl p-3.5 shadow-2xs border border-plum-200"
                     >
-                      <span className="font-display font-semibold text-plum-600 shrink-0 w-5">
+                      <span className="font-display font-bold text-rose-600 shrink-0 w-5">
                         {i + 1}.
                       </span>
-                      <span>{q}</span>
+                      <span className="leading-relaxed">{q}</span>
                     </motion.li>
                   ))}
                 </ul>

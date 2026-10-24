@@ -15,6 +15,7 @@ import Vault from "./pages/Vault.jsx";
 import Education from "./pages/Education.jsx";
 import CareCircle from "./pages/CareCircle.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
+import EmergencyView from "./pages/EmergencyView.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/start" element={<Onboarding />} />
+        <Route path="/emergency" element={<EmergencyView />} />
         <Route path="/app" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="symptoms" element={<SymptomTracker />} />

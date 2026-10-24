@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, HeartPulse, X, Clock, Trash2, Mic, MicOff, Search, Sparkles } from "lucide-react";
+import { Plus, HeartPulse, X, Clock, Trash2, Search, Sparkles } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
@@ -28,63 +28,9 @@ export default function SymptomTracker() {
   const [name, setName] = useState("");
   const [severity, setSeverity] = useState("Mild");
   const [notes, setNotes] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  const [voiceTarget, setVoiceTarget] = useState(null); // 'name' | 'notes'
-  const [voiceNotice, setVoiceNotice] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState("All");
-
-  const startVoiceInput = (targetField) => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setVoiceNotice("Voice recognition is not supported in this browser. Please type directly.");
-      setTimeout(() => setVoiceNotice(""), 3500);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = "en-US";
-
-      setIsListening(true);
-      setVoiceTarget(targetField);
-      setVoiceNotice(`Listening... Describe your ${targetField === "name" ? "symptom" : "notes"}`);
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (targetField === "name") {
-          setName((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        } else {
-          setNotes((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        }
-        setIsListening(false);
-        setVoiceTarget(null);
-        setVoiceNotice("");
-      };
-
-      recognition.onerror = () => {
-        setIsListening(false);
-        setVoiceTarget(null);
-        setVoiceNotice("Could not access microphone. Please type your entry.");
-        setTimeout(() => setVoiceNotice(""), 3000);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        setVoiceTarget(null);
-      };
-
-      recognition.start();
-    } catch {
-      setIsListening(false);
-      setVoiceTarget(null);
-      setVoiceNotice("Microphone unavailable. Please type your entry.");
-      setTimeout(() => setVoiceNotice(""), 3000);
-    }
-  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -129,22 +75,9 @@ export default function SymptomTracker() {
             <Card className="p-6 sm:p-7 shadow-sm border-plum-200">
               <form onSubmit={submit} className="space-y-5">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-semibold text-plum-700">What are you experiencing? *</label>
-                    <button
-                      type="button"
-                      onClick={() => startVoiceInput("name")}
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
-                        isListening && voiceTarget === "name"
-                          ? "bg-rose-500 text-white animate-pulse"
-                          : "text-plum-600 bg-lavender-50 hover:bg-lavender-100"
-                      }`}
-                      title="Speak to dictate symptom"
-                    >
-                      {isListening && voiceTarget === "name" ? <MicOff size={13} /> : <Mic size={13} />}
-                      <span>{isListening && voiceTarget === "name" ? "Listening..." : "Voice log"}</span>
-                    </button>
-                  </div>
+                  <label className="text-sm font-semibold text-plum-700 block mb-2">
+                    What are you experiencing? *
+                  </label>
 
                   <input
                     value={name}
@@ -193,22 +126,9 @@ export default function SymptomTracker() {
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-semibold text-plum-700">Notes (optional)</label>
-                    <button
-                      type="button"
-                      onClick={() => startVoiceInput("notes")}
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
-                        isListening && voiceTarget === "notes"
-                          ? "bg-rose-500 text-white animate-pulse"
-                          : "text-plum-600 bg-lavender-50 hover:bg-lavender-100"
-                      }`}
-                      title="Speak to dictate notes"
-                    >
-                      {isListening && voiceTarget === "notes" ? <MicOff size={13} /> : <Mic size={13} />}
-                      <span>{isListening && voiceTarget === "notes" ? "Listening..." : "Dictate notes"}</span>
-                    </button>
-                  </div>
+                  <label className="text-sm font-semibold text-plum-700 block mb-2">
+                    Notes (optional)
+                  </label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -217,12 +137,6 @@ export default function SymptomTracker() {
                     className="w-full rounded-xl border border-plum-200 px-4 py-3 focus-ring bg-white text-plum-900 resize-none"
                   />
                 </div>
-
-                {voiceNotice && (
-                  <p className="text-xs text-rose-600 font-medium bg-rose-50 p-2.5 rounded-lg border border-rose-100">
-                    {voiceNotice}
-                  </p>
-                )}
 
                 <Button type="submit" variant="primary" className="w-full justify-center" disabled={!name.trim()}>
                   Save Symptom Entry

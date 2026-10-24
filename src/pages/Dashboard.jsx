@@ -84,20 +84,46 @@ export default function Dashboard() {
         </FadeIn>
 
         <FadeIn delay={0.1}>
-          <Card className="p-6 sm:p-7 h-full bg-plum-800 text-white flex flex-col">
-            <Badge tone="rose">AI Insight</Badge>
-            <h3 className="font-display text-lg font-semibold mt-4 mb-2">
+          <Card className="p-6 sm:p-7 h-full bg-gradient-to-br from-plum-900 via-plum-950 to-plum-900 text-white flex flex-col border-2 border-plum-700/70 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500 text-white shadow-xs">
+                <Sparkles size={13} className="text-amber-200" /> AI Insight
+              </span>
+              <span className="text-[11px] font-semibold text-rose-300">
+                Grounded in your logs
+              </span>
+            </div>
+
+            <h3 className="font-display text-xl font-bold text-white mb-2 leading-snug">
               {symptoms.length || moods.length
-                ? "A gentle pattern from your entries"
-                : "Your insights will appear here"}
+                ? "A gentle pattern from your recorded entries"
+                : "Your personal insights will appear here"}
             </h3>
-            <p className="text-sm text-lavender-100/85 leading-relaxed flex-1">
-              {symptoms.length || moods.length
-                ? `You've logged ${symptoms.length} symptom${symptoms.length === 1 ? "" : "s"} and ${moods.length} mood entr${moods.length === 1 ? "y" : "ies"} so far. Keep logging consistently so FemNura can reflect more meaningful patterns back to you.`
-                : "Once you log a few symptoms or moods, FemNura will reflect gentle, honest observations here — based only on what you've actually recorded."}
+
+            <p className="text-sm text-slate-100 font-medium leading-relaxed flex-1">
+              {symptoms.length || moods.length ? (
+                <>
+                  You have logged{" "}
+                  <span className="font-extrabold text-amber-300 bg-plum-800 px-2 py-0.5 rounded border border-plum-600">
+                    {symptoms.length} symptom{symptoms.length === 1 ? "" : "s"}
+                  </span>{" "}
+                  and{" "}
+                  <span className="font-extrabold text-amber-300 bg-plum-800 px-2 py-0.5 rounded border border-plum-600">
+                    {moods.length} mood log{moods.length === 1 ? "" : "s"}
+                  </span>{" "}
+                  so far. As you log consistently, FemNura reflects honest, clear observations back to you for your next doctor discussion.
+                </>
+              ) : (
+                "Once you log a few symptoms or moods, FemNura will reflect gentle, honest observations here — based only on what you've actually recorded, never fabricated or alarmist."
+              )}
             </p>
+
             <Link to="/app/timeline" className="mt-5">
-              <Button variant="secondary" size="sm" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full justify-center bg-white text-plum-950 font-bold border-2 border-white hover:bg-lavender-50 shadow-md text-xs sm:text-sm"
+              >
                 View full timeline <ArrowRight size={15} />
               </Button>
             </Link>
