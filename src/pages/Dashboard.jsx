@@ -16,9 +16,23 @@ import { Card, Button, Badge, Disclaimer, FadeIn } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 import RemedyModal from "../components/RemedyModal.jsx";
 import { getRemedyForSymptom, getRemedyForMood, getRemedyForCycle } from "../data/remedies.js";
+import { detectRedFlags } from "../utils/redFlags.js";
+import RedFlagAlertBanner from "../components/RedFlagAlertBanner.jsx";
 
 export default function Dashboard() {
   const { userName, symptoms, moods, cycleEntries, reminders, doctorSessions } = useDemoData();
+  const [dismissedFlagId, setDismissedFlagId] = useState(null);
+
+  // Check recent symptoms for any clinical red flags
+  const activeRedFlag = React.useMemo(() => {
+    for (const s of symptoms.slice(0, 5)) {
+      const match = detectRedFlags(s.name, s.notes || "");
+      if (match) return match;
+    }
+    return null;
+  }, [symptoms]);
+
+  const showRedFlagBanner = activeRedFlag && dismissedFlagId !== activeRedFlag.id;
 
   // Instant Remedy Modal state
   const [remedyModalOpen, setRemedyModalOpen] = useState(false);
@@ -54,6 +68,14 @@ export default function Dashboard() {
         title={`Good to see you, ${userName || "Friend"} 🌿`}
         subtitle="Here's a gentle overview of where things stand. Nothing is tracked unless you log it."
       />
+
+      {/* Emergency Red Flag High Alert Banner if acute symptoms are detected */}
+      {showRedFlagBanner && (
+        <RedFlagAlertBanner
+          flag={activeRedFlag}
+          onDismiss={() => setDismissedFlagId(activeRedFlag.id)}
+        />
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <StatCard

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Stethoscope,
@@ -12,10 +12,13 @@ import {
   FileText,
   Clock,
   Plus,
+  AlertTriangle,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer, Badge } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import { detectRedFlags } from "../utils/redFlags.js";
+import RedFlagAlertBanner from "../components/RedFlagAlertBanner.jsx";
 
 export default function DoctorQGen() {
   const { userName, symptoms, moods, cycleEntries, doctorSessions, addDoctorSession } = useDemoData();
@@ -25,18 +28,30 @@ export default function DoctorQGen() {
   const [customNote, setCustomNote] = useState("");
   const [copied, setCopied] = useState(false);
   const [activeSessionForModal, setActiveSessionForModal] = useState(null);
+  const [dismissedFlagId, setDismissedFlagId] = useState(null);
 
   const hasData = symptoms.length > 0 || moods.length > 0 || cycleEntries.length > 0;
+
+  // Real-time red flag detector across custom notes and logged symptoms
+  const currentRedFlag = useMemo(() => {
+    return detectRedFlags(
+      customNote,
+      ...symptoms.map((s) => `${s.name} ${s.severity} ${s.notes || ""}`)
+    );
+  }, [customNote, symptoms]);
+
+  const showRedFlagBanner = currentRedFlag && dismissedFlagId !== currentRedFlag.id;
 
   const generate = () => {
     setGenerating(true);
     setResult(null);
     setTimeout(() => {
-      const questions = buildQuestions(symptoms, moods, cycleEntries);
+      const questions = buildQuestions(symptoms, moods, cycleEntries, currentRedFlag);
       const session = {
         questions,
         doctorName: doctorName.trim(),
         customNote: customNote.trim(),
+        redFlag: currentRedFlag,
         basedOn: { symptoms: symptoms.length, moods: moods.length, cycle: cycleEntries.length },
       };
       addDoctorSession(session);
@@ -158,6 +173,16 @@ export default function DoctorQGen() {
         subtitle="Generate thoughtful questions based strictly on what you've actually logged — never fabricated, never a diagnosis."
       />
 
+      {/* Emergency Red Flag High Alert Banner */}
+      <AnimatePresence>
+        {showRedFlagBanner && (
+          <RedFlagAlertBanner
+            flag={currentRedFlag}
+            onDismiss={() => setDismissedFlagId(currentRedFlag.id)}
+          />
+        )}
+      </AnimatePresence>
+
       <Card className="p-6 sm:p-7 mb-6">
         {!hasData ? (
           <EmptyState
@@ -256,6 +281,23 @@ export default function DoctorQGen() {
                 </div>
               </div>
 
+              {result.redFlag && (
+                <div className="mb-5 p-4 sm:p-5 rounded-2xl bg-rose-50 border-2 border-rose-500 text-rose-950 flex items-start gap-3.5 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-rose-950 flex items-center gap-1.5">
+                      ⚠️ Urgent Medical Advisory Prepended to Consultation Sheet
+                    </h4>
+                    <p className="text-xs sm:text-sm text-rose-900 mt-1 leading-relaxed">
+                      Your entered notes or recorded symptoms contain clinical red flags for{" "}
+                      <strong>{result.redFlag.title}</strong>. Please do not delay emergency medical care for routine appointment questions. Immediate in-person evaluation is recommended.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-lavender-50/80 rounded-2xl p-4 sm:p-5 mb-5 border border-lavender-200 shadow-2xs">
                 <p className="text-xs font-extrabold uppercase tracking-wider text-plum-900 mb-3 flex items-center gap-1.5">
                   <Sparkles size={14} className="text-rose-500" /> Questions to ask your physician:
@@ -342,8 +384,17 @@ export default function DoctorQGen() {
   );
 }
 
-function buildQuestions(symptoms, moods, cycleEntries) {
+function buildQuestions(symptoms, moods, cycleEntries, redFlag = null) {
   const qs = [];
+
+  // Critical safety protocol: Prepend emergency advisory when red flag keywords are triggered
+  if (redFlag) {
+    qs.push(
+      `🚨 URGENT MEDICAL ADVISORY: The symptoms you described ("${redFlag.title}") present acute clinical red flags. Do not delay emergency medical care for routine appointment questions — please seek emergency in-person medical evaluation immediately.`,
+      `Doctor, have my acute symptoms ("${redFlag.title}") been fully evaluated to rule out time-sensitive emergencies like ectopic pregnancy, internal hemorrhage, or acute pelvic pathology?`
+    );
+  }
+
   const topSymptoms = [...new Set(symptoms.map((s) => s.name))].slice(0, 3);
   topSymptoms.forEach((name) => {
     const entries = symptoms.filter((s) => s.name === name);

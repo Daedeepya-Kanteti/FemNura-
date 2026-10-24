@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, HeartPulse, X, Clock, Trash2, Search, Sparkles } from "lucide-react";
+import { Plus, HeartPulse, X, Clock, Trash2, Search, Sparkles, AlertTriangle } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Badge, EmptyState, Disclaimer } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 import RemedyModal from "../components/RemedyModal.jsx";
 import { getRemedyForSymptom } from "../data/remedies.js";
+import { detectRedFlags } from "../utils/redFlags.js";
+import RedFlagAlertBanner from "../components/RedFlagAlertBanner.jsx";
 
 const commonSymptoms = [
   "Fatigue",
@@ -20,6 +22,8 @@ const commonSymptoms = [
   "Dizziness",
   "Joint pain",
   "Skin changes",
+  "Severe one-sided pelvic pain",
+  "Heavy bleeding soaking pad",
 ];
 
 const severities = ["Mild", "Moderate", "Severe"];
@@ -33,6 +37,23 @@ export default function SymptomTracker() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState("All");
+  const [dismissedFlagId, setDismissedFlagId] = useState(null);
+
+  // Real-time red flag detection in inputs and existing logs
+  const liveRedFlag = useMemo(() => {
+    return detectRedFlags(name, notes);
+  }, [name, notes]);
+
+  const existingRedFlag = useMemo(() => {
+    for (const s of symptoms) {
+      const match = detectRedFlags(s.name, s.notes || "");
+      if (match) return match;
+    }
+    return null;
+  }, [symptoms]);
+
+  const activeRedFlag = liveRedFlag || existingRedFlag;
+  const showRedFlagBanner = activeRedFlag && dismissedFlagId !== activeRedFlag.id;
 
   // Remedy Modal State
   const [remedyModalOpen, setRemedyModalOpen] = useState(false);
@@ -85,6 +106,16 @@ export default function SymptomTracker() {
           </Button>
         }
       />
+
+      {/* Emergency Red Flag High Alert Banner */}
+      <AnimatePresence>
+        {showRedFlagBanner && (
+          <RedFlagAlertBanner
+            flag={activeRedFlag}
+            onDismiss={() => setDismissedFlagId(activeRedFlag.id)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showForm && (
