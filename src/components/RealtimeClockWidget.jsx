@@ -259,7 +259,7 @@ export default function RealtimeClockWidget() {
                   {snoozeInfo.alertData.title}
                 </h4>
                 <p className="text-[11px] text-slate-300 mt-0.5 leading-snug">
-                  Chime will automatically ring again in <strong className="text-amber-300 font-mono">{formatSnoozeTime(snoozeInfo.secondsLeft)}</strong>. No second snooze permitted because healthcare cannot wait!
+                  Chime resumes in <strong className="text-amber-300 font-mono">{formatSnoozeTime(snoozeInfo.secondsLeft)}</strong>. You've paused for a beat — next, your well-being takes center stage!
                 </p>
                 <div className="flex items-center gap-2 mt-3">
                   <button
@@ -318,7 +318,7 @@ export default function RealtimeClockWidget() {
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-300 animate-ping" />
                     {(activeAlert.snoozeCount || 0) >= 1
-                      ? `Final Alarm (Snooze Ended) • ${activeAlert.time}`
+                      ? `Your Turn Now • ${activeAlert.time}`
                       : `Chiming Continuously • ${activeAlert.time}`}
                   </span>
                   <button
@@ -337,15 +337,15 @@ export default function RealtimeClockWidget() {
                 {(activeAlert.snoozeCount || 0) >= 1 ? (
                   <div className="mt-2 p-2.5 rounded-xl bg-amber-900/90 border border-amber-500/60">
                     <p className="text-[11px] font-bold text-amber-200 flex items-center gap-1">
-                      ⚠️ Snooze Limit Reached (1 of 1 used)
+                      🌸 You Deserve This Moment (Snooze Used)
                     </p>
                     <p className="text-[11px] text-amber-100/90 mt-0.5 leading-snug">
-                      No delay in healthcare! Snooze is allowed only once. Please attend to your health now.
+                      You care for everyone else all day — this moment belongs strictly to you. No more putting yourself on the backburner. Take a breath and attend to you!
                     </p>
                   </div>
                 ) : (
                   <p className="text-xs text-lavender-200 mt-0.5 leading-snug">
-                    Chime will ring continuously until addressed. Snooze allowed only once — no delay in healthcare!
+                    Chiming continuously until heard. One quick pause is yours, but remember: your health deserves the front seat!
                   </p>
                 )}
 
