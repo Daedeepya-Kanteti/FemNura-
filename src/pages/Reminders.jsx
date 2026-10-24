@@ -10,6 +10,9 @@ import {
   Calendar,
   CheckCircle2,
   Sparkles,
+  Pencil,
+  Save,
+  Check,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, Disclaimer, Badge } from "../components/UI.jsx";
@@ -17,7 +20,7 @@ import { useDemoData } from "../context/DemoDataContext.jsx";
 import { playReminderChime } from "../utils/sound.js";
 
 export default function Reminders() {
-  const { reminders, toggleReminder, addReminder, deleteReminder } = useDemoData();
+  const { reminders, toggleReminder, addReminder, updateReminder, deleteReminder } = useDemoData();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [frequency, setFrequency] = useState("Daily");
@@ -33,6 +36,14 @@ export default function Reminders() {
   const [time, setTime] = useState(getNextMinuteTime());
   const [testedId, setTestedId] = useState(null);
 
+  // Edit existing reminder state
+  const [editingReminder, setEditingReminder] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTime, setEditTime] = useState("09:00");
+  const [editFrequency, setEditFrequency] = useState("Daily");
+  const [editActive, setEditActive] = useState(true);
+  const [editSuccessMsg, setEditSuccessMsg] = useState("");
+
   const handleTestSound = (id) => {
     setTestedId(id);
     playReminderChime();
@@ -41,6 +52,38 @@ export default function Reminders() {
 
   const setTimePreset = (presetTime) => {
     setTime(presetTime);
+  };
+
+  const startEditing = (reminder) => {
+    setEditingReminder(reminder);
+    setEditTitle(reminder.title);
+    setEditTime(reminder.time || "09:00");
+    setEditFrequency(reminder.frequency || "Daily");
+    setEditActive(reminder.active !== false);
+    setEditSuccessMsg("");
+  };
+
+  const cancelEditing = () => {
+    setEditingReminder(null);
+    setEditSuccessMsg("");
+  };
+
+  const saveEdit = (e) => {
+    e.preventDefault();
+    if (!editingReminder || !editTitle.trim()) return;
+
+    updateReminder(editingReminder.id, {
+      title: editTitle.trim(),
+      time: editTime || "09:00",
+      frequency: editFrequency,
+      active: editActive,
+    });
+
+    setEditSuccessMsg("Reminder updated successfully!");
+    setTimeout(() => {
+      setEditSuccessMsg("");
+      setEditingReminder(null);
+    }, 600);
   };
 
   const submit = (e) => {
@@ -248,12 +291,22 @@ export default function Reminders() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 self-end sm:self-center">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap self-end sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => startEditing(r)}
+                    title="Edit reminder name, schedule time & frequency"
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border bg-white text-plum-700 border-plum-200 hover:bg-lavender-50 hover:border-plum-400 cursor-pointer shadow-2xs"
+                  >
+                    <Pencil size={13} className="text-plum-600" />
+                    <span>Edit</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleTestSound(r.id)}
                     title="Test reminder chime sound"
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors border ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors border cursor-pointer ${
                       testedId === r.id
                         ? "bg-rose-500 text-white border-rose-500"
                         : "bg-white text-plum-700 border-plum-200 hover:bg-lavender-50 hover:border-plum-400"
@@ -269,7 +322,7 @@ export default function Reminders() {
                     type="button"
                     onClick={() => deleteReminder(r.id)}
                     title="Delete reminder"
-                    className="p-2 text-plum-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors focus-ring"
+                    className="p-2 text-plum-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors focus-ring cursor-pointer"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -279,6 +332,172 @@ export default function Reminders() {
           ))
         )}
       </div>
+
+      {/* Edit Reminder Modal */}
+      <AnimatePresence>
+        {editingReminder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-plum-950/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-3xl shadow-2xl border border-plum-200 w-full max-w-lg overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-5 border-b border-plum-100 bg-gradient-to-r from-lavender-50 to-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-plum-800 text-white flex items-center justify-center shadow-xs">
+                    <Pencil size={16} />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-plum-900">
+                      Edit Reminder
+                    </h3>
+                    <p className="text-xs text-plum-500">
+                      Update title, scheduled chime alarm time, and repeat frequency
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={cancelEditing}
+                  className="p-1.5 text-plum-400 hover:text-plum-800 rounded-lg transition-colors cursor-pointer"
+                  title="Close edit"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={saveEdit} className="p-6 space-y-5">
+                <div>
+                  <label className="text-xs font-bold text-plum-700 block uppercase tracking-wide mb-1.5">
+                    Reminder Title / Description *
+                  </label>
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="e.g. Evening Multivitamin & Hydration"
+                    className="w-full rounded-xl border border-plum-200 px-4 py-2.5 text-sm font-semibold text-plum-900 focus-ring bg-white shadow-2xs"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-plum-700 uppercase tracking-wide flex items-center gap-1.5">
+                      <Clock size={14} className="text-plum-600" /> Scheduled Alarm Time (24h)
+                    </label>
+                    <span className="text-[11px] text-plum-500 font-medium">Follows live clock</span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2.5 items-start sm:items-center">
+                    <input
+                      type="time"
+                      value={editTime}
+                      onChange={(e) => setEditTime(e.target.value)}
+                      className="rounded-xl border border-plum-300 px-4 py-2 text-base font-mono font-bold text-plum-900 bg-white focus-ring shadow-2xs"
+                      required
+                    />
+
+                    {/* Quick presets in edit mode */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditTime(getNextMinuteTime())}
+                        className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 cursor-pointer"
+                        title="Set to next minute for testing"
+                      >
+                        ⚡ In 1 min
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditTime("08:30")}
+                        className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-lavender-50 text-plum-700 hover:bg-lavender-100 border border-lavender-200 cursor-pointer"
+                      >
+                        08:30
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditTime("13:30")}
+                        className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-lavender-50 text-plum-700 hover:bg-lavender-100 border border-lavender-200 cursor-pointer"
+                      >
+                        13:30
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditTime("20:00")}
+                        className="text-xs font-semibold px-2 py-1.5 rounded-lg bg-lavender-50 text-plum-700 hover:bg-lavender-100 border border-lavender-200 cursor-pointer"
+                      >
+                        20:00
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-plum-700 uppercase tracking-wide block mb-1.5">
+                    Repeat Frequency
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {["Daily", "Weekly", "Weekdays", "Custom schedule"].map((f) => (
+                      <button
+                        type="button"
+                        key={f}
+                        onClick={() => setEditFrequency(f)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                          editFrequency === f
+                            ? "bg-plum-800 text-white border-plum-800 shadow-2xs"
+                            : "bg-white text-plum-600 border-plum-200 hover:border-plum-400"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-plum-700 uppercase tracking-wide block mb-1.5">
+                    Reminder Status
+                  </label>
+                  <div className="flex items-center gap-3 bg-lavender-50/50 p-3 rounded-xl border border-lavender-100">
+                    <Toggle active={editActive} onToggle={() => setEditActive((v) => !v)} />
+                    <span className="text-xs font-semibold text-plum-800">
+                      {editActive ? "Active & Monitoring (Will chime at scheduled time)" : "Paused (Silent)"}
+                    </span>
+                  </div>
+                </div>
+
+                {editSuccessMsg && (
+                  <div className="bg-emerald-50 text-emerald-800 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-2 border border-emerald-200">
+                    <Check size={14} /> {editSuccessMsg}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-plum-100">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={cancelEditing}
+                    className="cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    className="gap-1.5 bg-plum-800 hover:bg-plum-900 cursor-pointer"
+                  >
+                    <Save size={14} /> Save Changes
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <Disclaimer compact />
     </div>

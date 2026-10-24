@@ -284,6 +284,23 @@ export function DemoDataProvider({ children }) {
     saveUserStorage(currentAccount.id, { ...userStorage, reminders: updated, updatedAt: new Date().toISOString() });
   };
 
+  const updateReminder = (id, updatedFields) => {
+    if (!currentAccount?.id) return;
+    setReminders((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updatedFields } : item))
+    );
+
+    const userStorage = getUserStorage(currentAccount.id) || {};
+    const updated = (userStorage.reminders || []).map((item) =>
+      item.id === id ? { ...item, ...updatedFields } : item
+    );
+    saveUserStorage(currentAccount.id, {
+      ...userStorage,
+      reminders: updated,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
   const updateReminderTime = (id, newTime) => {
     if (!currentAccount?.id) return;
     setReminders((prev) =>
@@ -499,6 +516,8 @@ export function DemoDataProvider({ children }) {
     reminders,
     toggleReminder,
     addReminder,
+    updateReminder,
+    updateReminderTime,
     deleteReminder,
     vaultFiles,
     setVaultFiles,

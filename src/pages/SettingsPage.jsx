@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Download, Trash2, ShieldCheck, Check, Globe } from "lucide-react";
+import { Download, Trash2, ShieldCheck, Check, Globe, FileText, Printer, FileDown } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Disclaimer, Button, Badge } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
@@ -24,44 +24,314 @@ export default function SettingsPage() {
   const dataSharing = userSettings?.dataSharing ?? false;
   const language = userSettings?.language || "English";
 
-  const [exportSuccess, setExportSuccess] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   const setNotif = (val) => updateSettings({ notifications: typeof val === "function" ? val(notif) : val });
   const setDataSharing = (val) => updateSettings({ dataSharing: typeof val === "function" ? val(dataSharing) : val });
   const setLanguage = (val) => updateSettings({ language: val });
 
   const exportAllData = () => {
-    const exportPayload = {
-      app: "FemNura",
-      tagline: "Your Health. Your Priority.",
+    const data = {
       exportDate: new Date().toISOString(),
-      user: {
-        id: currentAccount?.id,
-        name: userName,
-        email: userEmail,
-      },
-      healthRecords: {
-        symptoms,
-        moods,
-        cycleEntries,
-        reminders,
-        doctorSessions,
-        trustedContacts,
-        emergencyProfile,
-        settings: userSettings,
-      },
+      user: { name: userName, email: userEmail, accountId: currentAccount?.id },
+      emergencyProfile,
+      trustedContacts,
+      symptoms,
+      moods,
+      cycleEntries,
+      reminders,
+      doctorSessions,
+      settings: userSettings,
     };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `femnura-health-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
-    const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `FemNura_${(userName || "health").toLowerCase()}_export.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+  const exportHealthDataAsPDF = () => {
+    setPdfGenerating(true);
+    const printWindow = window.open("", "_blank");
 
-    setExportSuccess(true);
-    setTimeout(() => setExportSuccess(false), 3000);
+    const primaryContact = trustedContacts[0] || { name: "Not assigned", phone: "N/A", relation: "N/A" };
+    const secondaryContact = trustedContacts[1] || null;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>FemNura Complete Health Record - ${userName || "Patient"}</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              color: #2e1f2d;
+              margin: 30px;
+              line-height: 1.5;
+              background: #fff;
+            }
+            @media print {
+              body { margin: 15mm; }
+              @page { size: A4; margin: 12mm 15mm; }
+              .no-print { display: none !important; }
+            }
+            .header {
+              border-bottom: 2px solid #5f3860;
+              padding-bottom: 14px;
+              margin-bottom: 22px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            .logo { font-size: 26px; font-weight: bold; color: #5f3860; font-family: Georgia, serif; }
+            .tagline { font-size: 13px; color: #7a5689; font-weight: 600; margin-top: 2px; }
+            .meta { font-size: 12px; color: #555; text-align: right; }
+            .badge { background: #5f3860; color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+            h2 {
+              color: #4b234d;
+              font-size: 15px;
+              border-bottom: 1.5px solid #e5dbe7;
+              padding-bottom: 5px;
+              margin-top: 24px;
+              margin-bottom: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .grid-box {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+              background: #faf7fc;
+              border: 1px solid #e2d7e5;
+              border-radius: 8px;
+              padding: 12px 16px;
+              margin-bottom: 16px;
+              font-size: 13px;
+            }
+            .grid-item strong { color: #5f3860; display: block; font-size: 11px; text-transform: uppercase; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
+            th {
+              background: #f3ecf5;
+              color: #421845;
+              text-align: left;
+              padding: 8px 10px;
+              border: 1px solid #dcd0e0;
+              font-weight: 700;
+              text-transform: uppercase;
+              font-size: 11px;
+            }
+            td { padding: 8px 10px; border: 1px solid #e8dfea; color: #333; vertical-align: top; }
+            tr:nth-child(even) { background: #fdfbfe; }
+            .sev-mild { color: #2e7d32; font-weight: 600; }
+            .sev-moderate { color: #d97706; font-weight: 600; }
+            .sev-severe { color: #dc2626; font-weight: 700; }
+            .empty-text { font-style: italic; color: #888; font-size: 12px; padding: 8px 0; }
+            ol { padding-left: 20px; margin: 6px 0; }
+            li { margin-bottom: 6px; font-size: 13px; color: #333; }
+            .footer {
+              margin-top: 35px;
+              font-size: 11px;
+              color: #666;
+              border-top: 1px solid #ddd;
+              padding-top: 12px;
+              text-align: center;
+              line-height: 1.4;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">FemNura</div>
+              <div class="tagline">Your Health. Your Priority.</div>
+              <div style="margin-top: 6px;"><span class="badge">Official Health Data Dossier (PDF)</span></div>
+            </div>
+            <div class="meta">
+              <strong>Patient:</strong> ${userName || "Patient"}<br/>
+              <strong>Email / ID:</strong> ${userEmail || currentAccount?.id || "N/A"}<br/>
+              <strong>Export Date:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br/>
+              <strong>Language / Locale:</strong> ${language}
+            </div>
+          </div>
+
+          <h2>1. Emergency & Medical ID Overview</h2>
+          <div class="grid-box">
+            <div class="grid-item"><strong>Blood Group</strong> <span style="font-size:16px; font-weight:bold; color:#dc2626;">${emergencyProfile?.bloodGroup || "O+"}</span></div>
+            <div class="grid-item"><strong>Known Allergies</strong> ${emergencyProfile?.allergies || "None declared"}</div>
+            <div class="grid-item"><strong>Medical Conditions</strong> ${emergencyProfile?.conditions || "None declared"}</div>
+            <div class="grid-item"><strong>Emergency Notes</strong> ${emergencyProfile?.emergencyNotes || "Call primary contact immediately."}</div>
+            <div class="grid-item"><strong>Primary Emergency Contact</strong> ${primaryContact.name} (${primaryContact.relation}) — ${primaryContact.phone}</div>
+            ${secondaryContact ? `<div class="grid-item"><strong>Secondary Contact</strong> ${secondaryContact.name} (${secondaryContact.relation}) — ${secondaryContact.phone}</div>` : ""}
+          </div>
+
+          <h2>2. Recorded Symptoms History (${symptoms.length} Total Logs)</h2>
+          ${
+            symptoms.length === 0
+              ? `<div class="empty-text">No symptoms recorded in this patient partition.</div>`
+              : `
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 22%;">Date & Time</th>
+                    <th style="width: 24%;">Symptom Name</th>
+                    <th style="width: 16%;">Severity</th>
+                    <th style="width: 38%;">Patient Notes / Context</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${symptoms
+                    .map(
+                      (s) => `
+                    <tr>
+                      <td>${new Date(s.date).toLocaleString()}</td>
+                      <td><strong>${s.name}</strong></td>
+                      <td><span class="${s.severity === "Severe" ? "sev-severe" : s.severity === "Moderate" ? "sev-moderate" : "sev-mild"}">${s.severity}</span></td>
+                      <td>${s.notes || "—"}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `
+          }
+
+          <h2>3. Emotional Wellness & Mood Log (${moods.length} Entries)</h2>
+          ${
+            moods.length === 0
+              ? `<div class="empty-text">No mood entries recorded yet.</div>`
+              : `
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 24%;">Date & Time</th>
+                    <th style="width: 26%;">Recorded Mood</th>
+                    <th style="width: 50%;">Reflections / Emotional Triggers</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${moods
+                    .map(
+                      (m) => `
+                    <tr>
+                      <td>${new Date(m.date).toLocaleString()}</td>
+                      <td><strong>${m.mood}</strong></td>
+                      <td>${m.notes || "—"}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `
+          }
+
+          <h2>4. Menstrual Health Records (${cycleEntries.length} Entries)</h2>
+          ${
+            cycleEntries.length === 0
+              ? `<div class="empty-text">No menstrual cycle entries recorded yet.</div>`
+              : `
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 24%;">Date & Time</th>
+                    <th style="width: 26%;">Cycle Phase</th>
+                    <th style="width: 20%;">Flow Level</th>
+                    <th style="width: 30%;">Notes & Cramp Context</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${cycleEntries
+                    .map(
+                      (c) => `
+                    <tr>
+                      <td>${new Date(c.date).toLocaleString()}</td>
+                      <td><strong>${c.phase}</strong></td>
+                      <td>${c.flow || "—"}</td>
+                      <td>${c.notes || "—"}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `
+          }
+
+          <h2>5. Doctor-Prep Questions & Consultation History (${doctorSessions.length} Sessions)</h2>
+          ${
+            doctorSessions.length === 0
+              ? `<div class="empty-text">No doctor question sessions generated yet.</div>`
+              : doctorSessions
+                  .map(
+                    (ds, i) => `
+                <div style="background:#faf7fc; border:1px solid #e2d7e5; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+                  <strong style="color:#5f3860;">Session #${i + 1} — ${new Date(ds.date).toLocaleDateString()}</strong>
+                  <ol>
+                    ${ds.questions.map((q) => `<li>${q}</li>`).join("")}
+                  </ol>
+                </div>
+              `
+                  )
+                  .join("")
+          }
+
+          <h2>6. Scheduled Health Reminders (${reminders.length} Reminders)</h2>
+          ${
+            reminders.length === 0
+              ? `<div class="empty-text">No reminders scheduled.</div>`
+              : `
+              <table>
+                <thead>
+                  <tr>
+                    <th>Reminder Title</th>
+                    <th>Scheduled Alarm Time</th>
+                    <th>Repeat Frequency</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${reminders
+                    .map(
+                      (r) => `
+                    <tr>
+                      <td><strong>${r.title}</strong></td>
+                      <td>${r.time || "09:00"}</td>
+                      <td>${r.frequency || "Daily"}</td>
+                      <td>${r.active ? "Active" : "Paused"}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            `
+          }
+
+          <div class="footer">
+            <strong>Clinical Disclaimer:</strong> FemNura provides personal health tracking, symptom organization, and doctor-visit preparation. It does not provide medical diagnoses or replace a licensed healthcare professional. Always consult your physician for medical evaluations.<br/>
+            <em>FemNura — Your Health. Your Priority. Privately compiled for ${userName || "Patient"}.</em>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    if (!printWindow) {
+      window.print();
+    } else {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+
+    setTimeout(() => setPdfGenerating(false), 1500);
   };
 
   return (
@@ -136,10 +406,26 @@ export default function SettingsPage() {
         </p>
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <Button variant="secondary" size="sm" onClick={exportAllData} className="gap-2">
-            {exportSuccess ? <Check size={14} className="text-sage-600" /> : <Download size={14} />}
-            {exportSuccess ? "Data Exported!" : "Export My Complete Health Data (JSON)"}
+          <Button
+            variant="primary"
+            size="md"
+            onClick={exportHealthDataAsPDF}
+            disabled={pdfGenerating}
+            className="gap-2 bg-plum-800 hover:bg-plum-900 shadow-sm text-sm font-bold text-white px-6 py-3 cursor-pointer"
+          >
+            <FileText size={17} className="text-amber-300" />
+            {pdfGenerating ? "Preparing Clinical Dossier..." : "Export Complete Health Data as PDF"}
           </Button>
+
+          <button
+            type="button"
+            onClick={exportAllData}
+            className="text-xs text-plum-500 hover:text-plum-900 underline ml-2 cursor-pointer flex items-center gap-1"
+            title="Download raw JSON data format"
+          >
+            <FileDown size={13} />
+            <span>Raw JSON backup</span>
+          </button>
         </div>
       </Card>
 

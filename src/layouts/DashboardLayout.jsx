@@ -97,57 +97,75 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-b border-plum-100 flex items-center justify-between px-4 h-16">
-        <div className="flex items-center gap-2">
+      <div className="lg:hidden fixed top-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-b border-plum-100 flex items-center justify-between px-3.5 h-16 shadow-2xs">
+        {/* Left side: Menu (three lines icon), Back button, and Brand Logo */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* That three lines icon menu placed on the left side */}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 -ml-1 rounded-xl text-plum-800 hover:text-plum-950 hover:bg-lavender-100 transition-colors focus-ring cursor-pointer"
+            aria-label="Open navigation menu"
+            title="Open Menu"
+          >
+            <Menu size={22} />
+          </button>
+
           {location.pathname !== "/app" ? (
             <button
               onClick={() => navigate(-1)}
-              className="p-2 -ml-1.5 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
+              className="p-2 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
               aria-label="Back to previous page"
+              title="Go back"
             >
-              <ArrowLeft size={19} />
+              <ArrowLeft size={18} />
               <span className="hidden xs:inline">Back</span>
             </button>
           ) : (
             <button
               onClick={() => navigate("/")}
-              className="p-2 -ml-1.5 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
+              className="p-2 text-plum-600 hover:text-plum-900 rounded-lg hover:bg-lavender-50 transition-colors focus-ring flex items-center gap-1 text-xs font-semibold"
               aria-label="Back to Home"
+              title="Home"
             >
-              <ArrowLeft size={19} />
+              <ArrowLeft size={18} />
               <span className="hidden xs:inline">Home</span>
             </button>
           )}
+
           <Logo size="sm" withTagline={false} />
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Right side: Real-time Clock, Calendar & Sound Widget */}
+        <div className="flex items-center">
           <RealtimeClockWidget />
-          <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg text-plum-700 focus-ring" aria-label="Open menu">
-            <Menu size={24} />
-          </button>
         </div>
       </div>
 
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            className="lg:hidden fixed inset-0 z-50 bg-plum-900/40"
+            className="lg:hidden fixed inset-0 z-50 bg-plum-900/40 backdrop-blur-xs"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileOpen(false)}
           >
             <motion.div
-              className="absolute right-0 top-0 h-full w-80 bg-white shadow-xl flex flex-col"
-              initial={{ x: 320 }}
+              className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl flex flex-col border-r border-plum-100"
+              initial={{ x: -320 }}
               animate={{ x: 0 }}
-              exit={{ x: 320 }}
+              exit={{ x: -320 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-5 py-5 border-b border-plum-100">
                 <Logo size="sm" />
-                <button onClick={() => setMobileOpen(false)} className="p-1.5 text-plum-600 focus-ring rounded-lg">
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="p-1.5 text-plum-600 hover:text-plum-900 focus-ring rounded-lg cursor-pointer"
+                  aria-label="Close navigation menu"
+                  title="Close Menu"
+                >
                   <X size={22} />
                 </button>
               </div>

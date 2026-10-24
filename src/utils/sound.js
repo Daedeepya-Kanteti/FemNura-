@@ -74,3 +74,35 @@ export function playReminderChime() {
     console.warn("Could not play reminder chime:", err);
   }
 }
+
+let chimeIntervalId = null;
+
+/**
+ * Start repeating the soothing chime continuously until stopped
+ */
+export function startContinuousChime(intervalMs = 3500) {
+  stopContinuousChime();
+  // Play immediately
+  playReminderChime();
+  // Repeat continuously every intervalMs
+  chimeIntervalId = setInterval(() => {
+    playReminderChime();
+  }, intervalMs);
+}
+
+/**
+ * Stop any active repeating chime
+ */
+export function stopContinuousChime() {
+  if (chimeIntervalId) {
+    clearInterval(chimeIntervalId);
+    chimeIntervalId = null;
+  }
+}
+
+/**
+ * Check if the continuous chime is actively looping
+ */
+export function isChimeActive() {
+  return chimeIntervalId !== null;
+}
