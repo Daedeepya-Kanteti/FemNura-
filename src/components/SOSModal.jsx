@@ -58,13 +58,39 @@ export default function SOSModal({ isOpen, onClose }) {
   const [showAreaPicker, setShowAreaPicker] = useState(false);
   const [customSearchQuery, setCustomSearchQuery] = useState("");
   const [searchStatus, setSearchStatus] = useState("");
+  const [areaChangeToast, setAreaChangeToast] = useState("");
   const [isLocating, setIsLocating] = useState(false);
 
-  // Dynamically sort emergency centers based on live user GPS coordinates
+  // Directly select preset area and immediately recalculate distances
+  const handleSelectArea = (preset) => {
+    setManualLocation(preset);
+    const cityName = preset.city || preset.name.split(" (")[0];
+    setAreaChangeToast(`📍 Area updated to ${cityName}! Hospital distances recalculated.`);
+    setTimeout(() => setAreaChangeToast(""), 3500);
+  };
+
+  const handleSearchArea = async () => {
+    if (!customSearchQuery.trim()) return;
+    setSearchStatus("Searching area...");
+    const ok = await searchAndSetLocation(customSearchQuery);
+    if (ok) {
+      setSearchStatus("Area updated!");
+      setAreaChangeToast(`📍 Area updated to ${customSearchQuery.trim()}! Hospital distances recalculated.`);
+      setTimeout(() => {
+        setSearchStatus("");
+        setAreaChangeToast("");
+        setShowAreaPicker(false);
+      }, 2500);
+    } else {
+      setSearchStatus("Area not found. Try a major city or district name.");
+    }
+  };
+
+  // Dynamically sort emergency centers based on live coordinates or chosen area
   const sortedHealthCenters = useMemo(() => {
     return getSortedHealthCenters(
-      userLocation?.latitude ?? null,
-      userLocation?.longitude ?? null,
+      userLocation?.latitude ?? userLocation?.lat ?? null,
+      userLocation?.longitude ?? userLocation?.lng ?? null,
       filterType
     );
   }, [userLocation, filterType]);
@@ -137,291 +163,126 @@ export default function SOSModal({ isOpen, onClose }) {
         </div>
 
         <div className="p-5 sm:p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-          {/* User Location Tracking Control Card */}
-          <div className="rounded-2xl border-2 border-plum-200/90 bg-lavender-50/50 p-4 shadow-2xs">
-            <div className="flex items-center justify-between gap-3 mb-2.5">
+          {/* Emergency Care Area & Location Control Card */}
+          <div className="rounded-2xl border-2 border-plum-200/90 bg-lavender-50/60 p-4 shadow-2xs space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isLocationEnabled ? "bg-emerald-600 text-white" : "bg-plum-100 text-plum-700"}`}>
-                  <Compass size={16} />
+                <div className="w-8 h-8 rounded-xl bg-plum-800 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <MapPin size={16} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-plum-950">Emergency Location Services</p>
-                  <p className="text-[11px] text-plum-600">Calculates distance & drive time to nearest hospital ERs</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-plum-950">
+                      Emergency Care Area:{" "}
+                      <span className="text-rose-700 underline decoration-rose-300">
+                        {userLocation?.city || userLocation?.address?.split(",")[0] || "Vijayawada"}
+                      </span>
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-plum-600 truncate max-w-xs sm:max-w-md">
+                    {userLocation?.address || "Vijayawada, Andhra Pradesh"}
+                  </p>
                 </div>
               </div>
 
-              {/* User Toggle Switch */}
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-plum-700 hidden sm:inline">
-                  {isLocationEnabled ? "Tracking Active" : "Location OFF"}
-                </span>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => toggleLocationTracking(!isLocationEnabled)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                    isLocationEnabled ? "bg-emerald-600" : "bg-slate-300"
-                  }`}
-                  role="switch"
-                  aria-checked={isLocationEnabled}
-                  title={isLocationEnabled ? "Disable location tracking" : "Enable location tracking"}
+                  onClick={() => setShowAreaPicker((prev) => !prev)}
+                  className="px-2.5 py-1.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Choose a different city or area"
                 >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      isLocationEnabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
+                  <Building2 size={13} />
+                  <span>{showAreaPicker ? "Hide Search" : "Change Area"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={copyLiveLocationLink}
+                  className="p-1.5 rounded-xl bg-white hover:bg-plum-100 text-plum-800 text-xs font-semibold border border-plum-200 flex items-center gap-1 cursor-pointer"
+                  title="Copy location coordinate link"
+                >
+                  {copiedLink ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
                 </button>
               </div>
             </div>
 
-            {/* Location Active Display */}
-            {isLocationEnabled ? (
-              <div className="mt-3 pt-3 border-t border-plum-200/70 space-y-2.5">
-                {locationLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-plum-700 bg-white/80 p-2.5 rounded-xl border border-plum-200">
-                    <RefreshCw size={14} className="animate-spin text-plum-600" />
-                    <span>Detecting current location and calculating hospital triage distances...</span>
-                  </div>
-                ) : userLocation ? (
-                  <div className="bg-white p-3 rounded-xl border border-plum-200 shadow-2xs space-y-2.5">
-                    {/* Notice if browser GPS hardware was denied/restricted */}
-                    {userLocation.isApproximate && userLocation.permissionRestricted && (
-                      <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-                        <Info size={15} className="text-amber-700 shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="font-bold text-amber-950">
-                            Browser GPS permission restricted or blocked by iframe
-                          </p>
-                          <p className="text-[11px] text-amber-800 mt-0.5">
-                            FemNura has automatically switched to network/area location so emergency hospital ER distances, drive times, and directions still work! You can also pick your exact city below.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              userLocation.source === "gps" ? "bg-emerald-500 animate-pulse" : "bg-plum-500"
-                            }`}
-                          />
-                          <span
-                            className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                              userLocation.source === "gps" ? "text-emerald-800" : "text-plum-800"
-                            }`}
-                          >
-                            {userLocation.source === "gps"
-                              ? "Live GPS Coordinates"
-                              : userLocation.source === "manual"
-                              ? "Manual Area Selected"
-                              : "Network / Regional Location"}
-                          </span>
-                          <span className="text-[10px] text-plum-400">
-                            ({userLocation.source === "gps" ? `±${userLocation.accuracy}m` : "Approx. Area"})
-                          </span>
-                        </div>
-                        <p className="text-xs font-bold text-plum-900 truncate">
-                          📍 {userLocation.address || `${userLocation.latitude.toFixed(4)}°, ${userLocation.longitude.toFixed(4)}°`}
-                        </p>
-                        <p className="text-[11px] font-mono text-plum-500 mt-0.5">
-                          {userLocation.latitude.toFixed(4)}°N, {userLocation.longitude.toFixed(4)}°E
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setShowAreaPicker((prev) => !prev)}
-                          className="px-2 py-1.5 rounded-lg bg-plum-100 hover:bg-plum-200 text-plum-900 text-xs font-bold border border-plum-300 flex items-center gap-1 cursor-pointer transition-colors"
-                          title="Change City or Area"
-                        >
-                          <Building2 size={12} />
-                          <span className="text-[11px]">{showAreaPicker ? "Close" : "Change Area"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={copyLiveLocationLink}
-                          className="p-1.5 rounded-lg bg-lavender-50 hover:bg-lavender-100 text-plum-800 text-xs font-semibold border border-plum-200 flex items-center gap-1 cursor-pointer"
-                          title="Copy Google Maps coordinate link"
-                        >
-                          {copiedLink ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                          <span className="text-[11px] hidden xs:inline">{copiedLink ? "Copied" : "Copy"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={refreshLocation}
-                          className="p-1.5 rounded-lg bg-lavender-50 hover:bg-lavender-100 text-plum-800 border border-plum-200 cursor-pointer"
-                          title="Retry or refresh GPS coordinates"
-                        >
-                          <RefreshCw size={13} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Expandable City & Area Picker */}
-                    {showAreaPicker && (
-                      <div className="pt-2.5 mt-2 border-t border-plum-100 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[11px] font-bold text-plum-900 uppercase tracking-wider flex items-center gap-1">
-                            <Globe size={12} className="text-plum-600" /> Select Quick City Preset:
-                          </p>
-                          <button
-                            type="button"
-                            onClick={refreshLocation}
-                            className="text-[11px] font-bold text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            <RefreshCw size={11} /> Retry Browser GPS
-                          </button>
-                        </div>
-
-                        {/* City Preset Buttons */}
-                        <div className="flex flex-wrap gap-1.5">
-                          {CITY_PRESETS.map((preset) => {
-                            const isCurrent =
-                              Math.abs(userLocation.latitude - preset.lat) < 0.05 &&
-                              Math.abs(userLocation.longitude - preset.lng) < 0.05;
-                            return (
-                              <button
-                                key={preset.name}
-                                type="button"
-                                onClick={() => {
-                                  setManualLocation(preset);
-                                  setShowAreaPicker(false);
-                                }}
-                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
-                                  isCurrent
-                                    ? "bg-plum-800 text-white border-plum-800 shadow-2xs"
-                                    : "bg-lavender-50/70 hover:bg-lavender-100 text-plum-900 border-plum-200"
-                                }`}
-                              >
-                                {preset.name.split(" (")[0]}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Custom Area Search Bar */}
-                        <div className="flex items-center gap-1.5 pt-1">
-                          <div className="relative flex-1">
-                            <input
-                              type="text"
-                              value={customSearchQuery}
-                              onChange={(e) => setCustomSearchQuery(e.target.value)}
-                              onKeyDown={async (e) => {
-                                if (e.key === "Enter" && customSearchQuery.trim()) {
-                                  setSearchStatus("Searching...");
-                                  const ok = await searchAndSetLocation(customSearchQuery);
-                                  setSearchStatus(ok ? "Area set!" : "Location not found");
-                                  if (ok) {
-                                    setTimeout(() => {
-                                      setShowAreaPicker(false);
-                                      setSearchStatus("");
-                                    }, 1000);
-                                  }
-                                }
-                              }}
-                              placeholder="Or search city, town, or area..."
-                              className="w-full text-xs px-2.5 py-1.5 pl-7 rounded-lg border border-plum-200 bg-white focus:outline-none focus:border-plum-500"
-                            />
-                            <Search size={12} className="absolute left-2.5 top-2 text-plum-400" />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!customSearchQuery.trim()) return;
-                              setSearchStatus("Searching...");
-                              const ok = await searchAndSetLocation(customSearchQuery);
-                              setSearchStatus(ok ? "Area set!" : "Not found");
-                              if (ok) {
-                                setTimeout(() => {
-                                  setShowAreaPicker(false);
-                                  setSearchStatus("");
-                                }, 1000);
-                              }
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
-                          >
-                            Set Area
-                          </button>
-                        </div>
-                        {searchStatus && (
-                          <p className="text-[10px] text-plum-600 font-medium pl-1">{searchStatus}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : locationError ? (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
-                    <div className="flex items-start gap-1.5">
-                      <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-bold">{locationError}</p>
-                        <p className="text-[11px] text-amber-800 mt-0.5">
-                          Pick a city below to calculate emergency hospital distances:
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {CITY_PRESETS.slice(0, 4).map((preset) => (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          onClick={() => setManualLocation(preset)}
-                          className="px-2 py-1 rounded-lg bg-white border border-amber-300 text-amber-900 text-[11px] font-bold hover:bg-amber-100 cursor-pointer"
-                        >
-                          {preset.name.split(" (")[0]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+            {/* Confirmation Toast upon Changing Area */}
+            {areaChangeToast && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-900 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                <span>{areaChangeToast}</span>
               </div>
-            ) : (
-              <div className="mt-2 text-[11px] text-plum-600 space-y-2">
-                <div className="flex items-center justify-between flex-wrap gap-1">
-                  <span>
-                    Privacy Mode: Device GPS is off. You can enable GPS or pick your city directly to calculate ER distances:
-                  </span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => toggleLocationTracking(true)}
-                      className="font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
-                    >
-                      Turn On GPS
-                    </button>
-                    <span className="text-plum-300">•</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toggleLocationTracking(true);
-                        setShowAreaPicker(true);
-                      }}
-                      className="font-bold text-plum-800 hover:text-plum-950 underline cursor-pointer"
-                    >
-                      Change Area
-                    </button>
-                  </div>
-                </div>
+            )}
 
-                {/* Quick 1-tap city selection buttons right from Privacy Mode */}
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {CITY_PRESETS?.slice(0, 5).map((preset) => (
+            {/* Quick 1-Click City Preset Pills */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-plum-600 flex items-center gap-1">
+                  <Globe size={11} className="text-plum-500" />
+                  Select City / Region (Instant Hospital Distance Update):
+                </span>
+                <span className="text-[10px] font-mono text-plum-500 hidden sm:inline">
+                  {userLocation?.latitude?.toFixed(3)}°N, {userLocation?.longitude?.toFixed(3)}°E
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5">
+                {CITY_PRESETS.map((preset) => {
+                  const targetLat = preset.latitude ?? preset.lat;
+                  const targetLng = preset.longitude ?? preset.lng;
+                  const isCurrent =
+                    userLocation &&
+                    Math.abs((userLocation.latitude ?? userLocation.lat) - targetLat) < 0.04 &&
+                    Math.abs((userLocation.longitude ?? userLocation.lng) - targetLng) < 0.04;
+                  return (
                     <button
                       key={preset.name}
                       type="button"
-                      onClick={() => {
-                        toggleLocationTracking(true);
-                        setManualLocation(preset);
-                      }}
-                      className="px-2 py-0.5 rounded-lg bg-white hover:bg-lavender-100 text-plum-900 border border-plum-200 text-[10px] font-bold shadow-2xs transition-colors cursor-pointer"
+                      onClick={() => handleSelectArea(preset)}
+                      className={`text-xs px-2.5 py-1 rounded-xl border transition-all cursor-pointer flex items-center gap-1 ${
+                        isCurrent
+                          ? "bg-plum-900 text-white border-plum-900 font-extrabold shadow-2xs ring-2 ring-plum-400/40"
+                          : "bg-white hover:bg-lavender-100 text-plum-900 border-plum-200 font-medium"
+                      }`}
+                      title={`Switch to ${preset.name}`}
                     >
-                      📍 {preset.name.split(" (")[0]}
+                      {isCurrent && <Check size={12} className="text-emerald-300" />}
+                      <span>{preset.name.split(" (")[0]}</span>
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Custom Area Search Bar (Toggled or Direct) */}
+            {showAreaPicker && (
+              <div className="pt-2 border-t border-plum-200/70 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={customSearchQuery}
+                      onChange={(e) => setCustomSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSearchArea();
+                      }}
+                      placeholder="Type any city or neighborhood (e.g. Visakhapatnam, Tirupati, Pune)..."
+                      className="w-full text-xs px-3 py-2 pl-8 rounded-xl border border-plum-300 bg-white focus:outline-none focus:border-plum-600 focus:ring-1 focus:ring-plum-400"
+                    />
+                    <Search size={13} className="absolute left-2.5 top-2.5 text-plum-400" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSearchArea}
+                    className="px-3.5 py-2 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                  >
+                    Set Area
+                  </button>
                 </div>
+                {searchStatus && (
+                  <p className="text-[11px] text-plum-700 font-semibold pl-1">{searchStatus}</p>
+                )}
               </div>
             )}
           </div>
@@ -474,7 +335,7 @@ export default function SOSModal({ isOpen, onClose }) {
               </p>
               <button
                 type="button"
-                onClick={() => openNearestEmergencyCare(setIsLocating)}
+                onClick={() => openNearestEmergencyCare(userLocation, setIsLocating)}
                 className="text-xs font-semibold text-rose-700 hover:text-rose-900 flex items-center gap-1 cursor-pointer"
               >
                 <span>Live Map Search</span>
@@ -482,7 +343,7 @@ export default function SOSModal({ isOpen, onClose }) {
               </button>
             </div>
 
-            {/* Direct 1-Tap Live Geolocation Hospital Finder */}
+            {/* Direct 1-Tap Hospital Finder for Chosen Area */}
             <div className="mb-3.5 p-3.5 rounded-2xl bg-gradient-to-r from-rose-50 via-white to-rose-50 border-2 border-rose-300/90 shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -492,29 +353,29 @@ export default function SOSModal({ isOpen, onClose }) {
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-600" />
                     </span>
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-800">
-                      Live Hospital Radar
+                      Emergency Hospital Router
                     </span>
                   </div>
                   <h4 className="text-xs sm:text-sm font-bold text-plum-950 leading-snug">
-                    Launch Instant GPS Emergency Routing
+                    Find Nearest Emergency Care in {userLocation?.city || "Selected Area"}
                   </h4>
                   <p className="text-[11px] text-plum-600 mt-0.5">
-                    Uses native device GPS to locate closest 24/7 hospitals on Google Maps without any API keys.
+                    Opens Google Maps directly centered on your active care area ({userLocation?.city || "Vijayawada"}) without requiring API keys or hardware GPS prompts.
                   </p>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => openNearestEmergencyCare(setIsLocating)}
+                  onClick={() => openNearestEmergencyCare(userLocation, setIsLocating)}
                   disabled={isLocating}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 active:scale-[0.98] text-white shadow-sm shadow-rose-600/30 transition-all cursor-pointer group shrink-0"
-                  title="Find Nearest Emergency Care using live device GPS"
+                  title={`Find Nearest Emergency Care in ${userLocation?.city || "Selected Area"}`}
                 >
                   <span className="relative flex h-2.5 w-2.5 items-center justify-center">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-80" />
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
                   </span>
-                  <span>{isLocating ? "Locating..." : "Find Nearest Emergency Care"}</span>
+                  <span>{isLocating ? "Opening Maps..." : `Find Nearest Emergency Care in ${userLocation?.city || "Area"}`}</span>
                   <ExternalLink size={13} className="text-rose-200 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </div>
@@ -522,7 +383,9 @@ export default function SOSModal({ isOpen, onClose }) {
               {/* Informative Status Label */}
               <p className="text-[10px] text-plum-500 mt-2 pt-2 border-t border-rose-100 flex items-center gap-1.5 font-medium">
                 <Navigation size={11} className="text-rose-600 shrink-0" />
-                <span>Uses device GPS for real-time routing (No Google Maps API key required)</span>
+                <span>
+                  📍 Centered on {userLocation?.city || userLocation?.address || "Selected Area"} ({userLocation?.latitude?.toFixed(3)}°N, {userLocation?.longitude?.toFixed(3)}°E) • Instant Google Maps routing (No API key needed)
+                </span>
               </p>
             </div>
 

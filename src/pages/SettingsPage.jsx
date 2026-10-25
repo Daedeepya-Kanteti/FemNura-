@@ -417,19 +417,32 @@ export default function SettingsPage() {
             {/* Quick City Presets */}
             <div className="pt-2 border-t border-plum-200/60">
               <span className="text-[10px] uppercase font-bold text-plum-600 block mb-1.5">
-                Switch City / Region:
+                Switch City / Emergency Care Area:
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {CITY_PRESETS?.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => setManualLocation(preset)}
-                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-white hover:bg-lavender-100 text-plum-900 border border-plum-200 transition-colors cursor-pointer"
-                  >
-                    {preset.name.split(" (")[0]}
-                  </button>
-                ))}
+                {CITY_PRESETS?.map((preset) => {
+                  const targetLat = preset.latitude ?? preset.lat;
+                  const targetLng = preset.longitude ?? preset.lng;
+                  const isCurrent =
+                    userLocation &&
+                    Math.abs((userLocation.latitude ?? userLocation.lat) - targetLat) < 0.04 &&
+                    Math.abs((userLocation.longitude ?? userLocation.lng) - targetLng) < 0.04;
+                  return (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setManualLocation(preset)}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                        isCurrent
+                          ? "bg-plum-900 text-white border-plum-900 font-bold shadow-2xs"
+                          : "bg-white hover:bg-lavender-100 text-plum-900 border-plum-200 font-medium"
+                      }`}
+                    >
+                      {isCurrent && "✓ "}
+                      {preset.name.split(" (")[0]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

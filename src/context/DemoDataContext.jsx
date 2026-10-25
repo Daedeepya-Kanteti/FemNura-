@@ -4,6 +4,7 @@ import {
   getFallbackNetworkLocation,
   searchCoordinatesForQuery,
   CITY_PRESETS,
+  DEFAULT_AREA,
 } from "../utils/location.js";
 
 const DemoDataContext = createContext(null);
@@ -11,6 +12,7 @@ const DemoDataContext = createContext(null);
 const SAVED_ACCOUNTS_KEY = "femnura_saved_accounts_v2";
 const LAST_LOGIN_KEY = "femnura_last_login_account_v2";
 const USER_STORAGE_PREFIX = "femnura_userdata_v2_";
+const SELECTED_AREA_KEY = "femnura_selected_area_v2";
 
 // Initial seed account for primary default user
 const DEFAULT_ACCOUNT = {
@@ -221,9 +223,22 @@ export function DemoDataProvider({ children }) {
         notifications: true,
         dataSharing: false,
         language: "English",
-        locationTracking: false,
+        locationTracking: true,
       }
     );
+    if (data.selectedArea) {
+      const lat = Number(data.selectedArea.latitude ?? data.selectedArea.lat);
+      const lng = Number(data.selectedArea.longitude ?? data.selectedArea.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setUserLocation({
+          ...data.selectedArea,
+          latitude: lat,
+          longitude: lng,
+          lat,
+          lng,
+        });
+      }
+    }
   }, []);
 
   // Initial load on mount
@@ -412,8 +427,25 @@ export function DemoDataProvider({ children }) {
     });
   };
 
-  // Real-time Geolocation tracking with user opt-in control and smart network fallback
-  const [userLocation, setUserLocation] = useState(null);
+  // Active Location state for Emergency Care & Hospital Triage
+  // Defaults to stored selected area or regional default so distances are ALWAYS available immediately
+  const [userLocation, setUserLocation] = useState(() => {
+    const stored = safeLocalStorageGet(SELECTED_AREA_KEY, null);
+    if (stored && (stored.latitude != null || stored.lat != null)) {
+      const lat = Number(stored.latitude ?? stored.lat);
+      const lng = Number(stored.longitude ?? stored.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        return {
+          ...stored,
+          latitude: lat,
+          longitude: lng,
+          lat,
+          lng,
+        };
+      }
+    }
+    return DEFAULT_AREA;
+  });
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
   const [locationNotice, setLocationNotice] = useState(null);
@@ -431,30 +463,20 @@ export function DemoDataProvider({ children }) {
           timestamp: new Date().toISOString(),
         };
         setUserLocation(loc);
+        safeLocalStorageSet(SELECTED_AREA_KEY, loc);
         setLocationLoading(false);
         setLocationError(null);
         setLocationNotice(
-          "Browser GPS hardware was blocked or restricted. Network/area location is active so hospital triage and emergency distances work seamlessly."
+          "Network/area location is active so hospital triage and emergency distances work seamlessly."
         );
         return loc;
       } catch (err) {
-        const defaultLoc = {
-          latitude: 16.5062,
-          longitude: 80.648,
-          city: "Vijayawada",
-          region: "Andhra Pradesh",
-          address: "Vijayawada, Andhra Pradesh",
-          source: "preset",
-          accuracy: 3000,
-          isApproximate: true,
-          permissionRestricted: true,
-          timestamp: new Date().toISOString(),
-        };
-        setUserLocation(defaultLoc);
+        setUserLocation(DEFAULT_AREA);
+        safeLocalStorageSet(SELECTED_AREA_KEY, DEFAULT_AREA);
         setLocationLoading(false);
         setLocationError(null);
-        setLocationNotice("Browser GPS restricted. Default regional center active.");
-        return defaultLoc;
+        setLocationNotice("Default regional center active.");
+        return DEFAULT_AREA;
       }
     },
     []
@@ -485,8 +507,11 @@ export function DemoDataProvider({ children }) {
           const loc = {
             latitude,
             longitude,
+            lat: latitude,
+            lng: longitude,
             accuracy: Math.round(accuracy),
             address,
+            city: address.split(",")[0] || "Live GPS Area",
             source: "gps",
             isApproximate: false,
             permissionRestricted: false,
@@ -494,6 +519,7 @@ export function DemoDataProvider({ children }) {
           };
 
           setUserLocation(loc);
+          safeLocalStorageSet(SELECTED_AREA_KEY, loc);
           setLocationLoading(false);
           setLocationError(null);
           setLocationNotice(null);
@@ -502,11 +528,11 @@ export function DemoDataProvider({ children }) {
         async (err) => {
           console.warn("Browser GPS access rejected or unavailable:", err);
           let reason = "Browser location permission was not granted";
-          if (err.code === 1) {
+          if (err?.code === 1) {
             reason = "Location permission denied in browser (or restricted by iframe sandbox).";
-          } else if (err.code === 2) {
+          } else if (err?.code === 2) {
             reason = "GPS position unavailable on device.";
-          } else if (err.code === 3) {
+          } else if (err?.code === 3) {
             reason = "GPS location request timed out.";
           }
 
@@ -516,7 +542,7 @@ export function DemoDataProvider({ children }) {
         },
         {
           enableHighAccuracy: true,
-          timeout: 8000,
+          timeout: 6000,
           maximumAge: 60000,
         }
       );
@@ -525,24 +551,63 @@ export function DemoDataProvider({ children }) {
   );
 
   // Allow user to manually choose any city, preset, or custom address
-  const setManualLocation = useCallback((customLoc) => {
-    if (!customLoc || customLoc.latitude == null || customLoc.longitude == null) return;
-    const loc = {
-      latitude: Number(customLoc.latitude),
-      longitude: Number(customLoc.longitude),
-      accuracy: customLoc.accuracy || 1500,
-      address: customLoc.address || customLoc.name || "Selected Location",
-      city: customLoc.city || customLoc.name || "",
-      region: customLoc.region || "",
-      source: customLoc.source || "manual",
-      isApproximate: true,
-      permissionRestricted: false,
-      timestamp: new Date().toISOString(),
-    };
-    setUserLocation(loc);
-    setLocationError(null);
-    setLocationNotice(null);
-  }, []);
+  // Supports both { lat, lng } and { latitude, longitude } and immediately updates state & storage
+  const setManualLocation = useCallback(
+    (customLoc) => {
+      if (!customLoc) return null;
+      const lat = customLoc.latitude ?? customLoc.lat;
+      const lng = customLoc.longitude ?? customLoc.lng ?? customLoc.lon;
+      if (lat == null || lng == null) return null;
+
+      const numLat = Number(lat);
+      const numLng = Number(lng);
+      if (isNaN(numLat) || isNaN(numLng)) return null;
+
+      const cityName =
+        customLoc.city ||
+        (customLoc.name ? customLoc.name.split(" (")[0] : "") ||
+        "Selected Area";
+
+      const loc = {
+        latitude: numLat,
+        longitude: numLng,
+        lat: numLat,
+        lng: numLng,
+        accuracy: customLoc.accuracy || 1000,
+        address: customLoc.address || customLoc.name || "Selected Location",
+        city: cityName,
+        region: customLoc.region || "",
+        source: "manual",
+        isApproximate: false,
+        permissionRestricted: false,
+        timestamp: new Date().toISOString(),
+      };
+
+      setUserLocation(loc);
+      safeLocalStorageSet(SELECTED_AREA_KEY, loc);
+
+      // Persist to user settings & storage so it reflects immediately across all components
+      setUserSettings((prev) => {
+        const updated = { ...(prev || {}), locationTracking: true };
+        if (currentAccount?.id) {
+          const userStorage = getUserStorage(currentAccount.id) || {};
+          saveUserStorage(currentAccount.id, {
+            ...userStorage,
+            selectedArea: loc,
+            settings: updated,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        return updated;
+      });
+
+      setLocationLoading(false);
+      setLocationError(null);
+      setLocationNotice(null);
+      return loc;
+    },
+    [currentAccount?.id]
+  );
 
   // Search by query (e.g. city or neighborhood name) and set coordinates
   const searchAndSetLocation = useCallback(
@@ -550,6 +615,20 @@ export function DemoDataProvider({ children }) {
       if (!query || !query.trim()) return false;
       setLocationLoading(true);
       try {
+        const lower = query.trim().toLowerCase();
+        // Check local presets first for instant matching
+        const matchedPreset = CITY_PRESETS.find(
+          (p) =>
+            p.name.toLowerCase().includes(lower) ||
+            p.city?.toLowerCase().includes(lower) ||
+            p.address?.toLowerCase().includes(lower)
+        );
+        if (matchedPreset) {
+          setManualLocation(matchedPreset);
+          setLocationLoading(false);
+          return true;
+        }
+
         const result = await searchCoordinatesForQuery(query);
         if (result) {
           setManualLocation(result);
@@ -569,15 +648,14 @@ export function DemoDataProvider({ children }) {
     (enable) => {
       if (enable) {
         updateSettings({ locationTracking: true });
-        fetchCurrentLocation();
+        if (!userLocation) {
+          setUserLocation(DEFAULT_AREA);
+        }
       } else {
         updateSettings({ locationTracking: false });
-        setUserLocation(null);
-        setLocationError(null);
-        setLocationNotice(null);
       }
     },
-    [fetchCurrentLocation]
+    [updateSettings, userLocation]
   );
 
   const refreshLocation = useCallback(() => {
@@ -746,7 +824,7 @@ export function DemoDataProvider({ children }) {
     updateSettings,
     // Geolocation tracking
     userLocation,
-    isLocationEnabled: Boolean(userSettings?.locationTracking),
+    isLocationEnabled: userSettings?.locationTracking !== false,
     locationLoading,
     locationError,
     locationNotice,
@@ -755,6 +833,7 @@ export function DemoDataProvider({ children }) {
     setManualLocation,
     searchAndSetLocation,
     CITY_PRESETS,
+    DEFAULT_AREA,
   };
 
   return <DemoDataContext.Provider value={value}>{children}</DemoDataContext.Provider>;

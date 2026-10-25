@@ -436,15 +436,81 @@ export function getDirectionsUrl(lat, lng, name) {
 
 // Popular regional city & district presets
 export const CITY_PRESETS = [
-  { name: "Vijayawada (Siddhartha Nagar / Benz Circle)", lat: 16.5062, lng: 80.648, address: "Siddhartha Nagar, Vijayawada, Andhra Pradesh" },
-  { name: "Vijayawada (GGH / Buckinghampet Area)", lat: 16.5085, lng: 80.6385, address: "MG Road, Buckinghampet, Vijayawada, AP" },
-  { name: "Guntur / Tadepalli", lat: 16.4862, lng: 80.6128, address: "Tadepalli, Guntur / Vijayawada Region" },
-  { name: "Hyderabad (Banjara / Jubilee Hills)", lat: 17.4123, lng: 78.4285, address: "Banjara Hills, Hyderabad, Telangana" },
-  { name: "Bengaluru (Central / Koramangala)", lat: 12.9352, lng: 77.6245, address: "Koramangala, Bengaluru, Karnataka" },
-  { name: "Chennai (Central / T. Nagar)", lat: 13.0418, lng: 80.2341, address: "T. Nagar, Chennai, Tamil Nadu" },
-  { name: "Delhi NCR (Central)", lat: 28.6139, lng: 77.209, address: "Central Delhi, Delhi" },
-  { name: "Mumbai (South / Bandra)", lat: 19.0596, lng: 72.8295, address: "Bandra West, Mumbai, Maharashtra" },
+  {
+    name: "Vijayawada (Siddhartha Nagar / Benz Circle)",
+    lat: 16.5062,
+    lng: 80.648,
+    latitude: 16.5062,
+    longitude: 80.648,
+    city: "Vijayawada",
+    address: "Siddhartha Nagar, Vijayawada, Andhra Pradesh",
+  },
+  {
+    name: "Vijayawada (GGH / Buckinghampet Area)",
+    lat: 16.5085,
+    lng: 80.6385,
+    latitude: 16.5085,
+    longitude: 80.6385,
+    city: "Vijayawada",
+    address: "MG Road, Buckinghampet, Vijayawada, AP",
+  },
+  {
+    name: "Guntur / Tadepalli",
+    lat: 16.4862,
+    lng: 80.6128,
+    latitude: 16.4862,
+    longitude: 80.6128,
+    city: "Guntur",
+    address: "Tadepalli, Guntur / Vijayawada Region",
+  },
+  {
+    name: "Hyderabad (Banjara / Jubilee Hills)",
+    lat: 17.4123,
+    lng: 78.4285,
+    latitude: 17.4123,
+    longitude: 78.4285,
+    city: "Hyderabad",
+    address: "Banjara Hills, Hyderabad, Telangana",
+  },
+  {
+    name: "Bengaluru (Central / Koramangala)",
+    lat: 12.9352,
+    lng: 77.6245,
+    latitude: 12.9352,
+    longitude: 77.6245,
+    city: "Bengaluru",
+    address: "Koramangala, Bengaluru, Karnataka",
+  },
+  {
+    name: "Chennai (Central / T. Nagar)",
+    lat: 13.0418,
+    lng: 80.2341,
+    latitude: 13.0418,
+    longitude: 80.2341,
+    city: "Chennai",
+    address: "T. Nagar, Chennai, Tamil Nadu",
+  },
+  {
+    name: "Delhi NCR (Central)",
+    lat: 28.6139,
+    lng: 77.209,
+    latitude: 28.6139,
+    longitude: 77.209,
+    city: "Delhi NCR",
+    address: "Central Delhi, Delhi",
+  },
+  {
+    name: "Mumbai (South / Bandra)",
+    lat: 19.0596,
+    lng: 72.8295,
+    latitude: 19.0596,
+    longitude: 72.8295,
+    city: "Mumbai",
+    address: "Bandra West, Mumbai, Maharashtra",
+  },
 ];
+
+export const DEFAULT_AREA = CITY_PRESETS[0];
 
 // Fallback to network/IP-based geolocation when browser/iframe restricts GPS hardware
 export async function getFallbackNetworkLocation() {
@@ -475,6 +541,8 @@ export async function getFallbackNetworkLocation() {
           return {
             latitude: Number(lat),
             longitude: Number(lng),
+            lat: Number(lat),
+            lng: Number(lng),
             city,
             region,
             country,
@@ -491,14 +559,8 @@ export async function getFallbackNetworkLocation() {
 
   // Sensible default matching student/user's institution location (Siddhartha Academy / Vijayawada)
   return {
-    latitude: 16.5062,
-    longitude: 80.648,
-    city: "Vijayawada",
-    region: "Andhra Pradesh",
-    country: "India",
-    address: "Vijayawada, Andhra Pradesh (Regional Network Center)",
+    ...DEFAULT_AREA,
     source: "preset",
-    accuracy: 3000,
   };
 }
 
@@ -524,9 +586,15 @@ export async function searchCoordinatesForQuery(query) {
       const list = await res.json();
       if (list && list.length > 0) {
         const item = list[0];
+        const lat = Number(item.lat);
+        const lon = Number(item.lon);
         return {
-          latitude: Number(item.lat),
-          longitude: Number(item.lon),
+          latitude: lat,
+          longitude: lon,
+          lat: lat,
+          lng: lon,
+          name: item.display_name.split(",")[0] || query.trim(),
+          city: item.display_name.split(",")[0] || query.trim(),
           address: item.display_name.split(",").slice(0, 3).join(", "),
           source: "manual_search",
           accuracy: 1000,
@@ -539,56 +607,36 @@ export async function searchCoordinatesForQuery(query) {
   return null;
 }
 
-// Native live geolocation tracking to open nearest emergency care in Google Maps
-// Completely removes dependency on any API key or paid Google Maps SDK
-export function openNearestEmergencyCare(onLocatingChange) {
+// Open nearest emergency care in Google Maps.
+// Seamlessly uses the user's selected area coordinates without forcing or failing on browser GPS permissions.
+// If no coordinates are present, opens the nearby hospital search directly.
+export function openNearestEmergencyCare(preferredLocationOrCb, onLocatingChange) {
   if (typeof window === "undefined") return;
 
-  const openFallback = () => {
-    window.open("https://www.google.com/maps/search/emergency+hospital+near+me", "_blank");
-    onLocatingChange?.(false);
-  };
+  let loc = null;
+  let cb = null;
 
-  if (!navigator.geolocation) {
-    openFallback();
+  if (typeof preferredLocationOrCb === "function") {
+    cb = preferredLocationOrCb;
+  } else if (preferredLocationOrCb && typeof preferredLocationOrCb === "object") {
+    loc = preferredLocationOrCb;
+    cb = onLocatingChange;
+  }
+
+  const lat = loc?.latitude ?? loc?.lat;
+  const lng = loc?.longitude ?? loc?.lng;
+
+  if (lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+    cb?.(false);
+    window.open(
+      `https://www.google.com/maps/search/emergency+hospitals/@${Number(lat)},${Number(lng)},14z`,
+      "_blank"
+    );
     return;
   }
 
-  onLocatingChange?.(true);
-
-  let didRespond = false;
-  const timeoutId = setTimeout(() => {
-    if (!didRespond) {
-      didRespond = true;
-      openFallback();
-    }
-  }, 6000);
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      if (didRespond) return;
-      didRespond = true;
-      clearTimeout(timeoutId);
-      onLocatingChange?.(false);
-      const { latitude, longitude } = pos.coords;
-      window.open(
-        `https://www.google.com/maps/search/emergency+hospitals/@${latitude},${longitude},14z`,
-        "_blank"
-      );
-    },
-    (err) => {
-      if (didRespond) return;
-      didRespond = true;
-      clearTimeout(timeoutId);
-      console.warn("Native geolocation permission denied or unavailable, opening fallback search:", err);
-      openFallback();
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 5500,
-      maximumAge: 30000,
-    }
-  );
+  cb?.(false);
+  window.open("https://www.google.com/maps/search/emergency+hospital+near+me", "_blank");
 }
 
 

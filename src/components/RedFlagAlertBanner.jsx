@@ -22,13 +22,21 @@ export default function RedFlagAlertBanner({
   customDismissible = true,
   className = "",
 }) {
-  const { trustedContacts, userName } = useDemoData();
+  const {
+    trustedContacts,
+    userName,
+    userLocation,
+    setManualLocation,
+    CITY_PRESETS = [],
+  } = useDemoData();
   const [showContactModal, setShowContactModal] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [showAreaPicker, setShowAreaPicker] = useState(false);
+  const [areaNotice, setAreaNotice] = useState("");
   const primaryContact = trustedContacts[0] || null;
 
   const handleFindNearestEmergencyCare = () => {
-    openNearestEmergencyCare(setIsLocating);
+    openNearestEmergencyCare(userLocation, setIsLocating);
   };
 
   if (!flag) return null;
@@ -96,7 +104,77 @@ export default function RedFlagAlertBanner({
             )}
 
             {/* Direct Emergency SOS & Hospital Locator Section */}
-            <div className="mt-4 pt-3.5 border-t border-rose-200/90 space-y-2.5">
+            <div className="mt-4 pt-3.5 border-t border-rose-200/90 space-y-3">
+              {/* Active Area Banner & Quick Switcher */}
+              <div className="p-3 rounded-2xl bg-white/90 border border-rose-200/80 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="text-xs font-bold text-plum-950">
+                      📍 Selected Emergency Area:{" "}
+                      <span className="text-rose-700 underline decoration-rose-300">
+                        {userLocation?.city || userLocation?.address || "Vijayawada"}
+                      </span>
+                    </span>
+                    <span className="text-[10px] font-mono text-plum-500 hidden sm:inline">
+                      ({userLocation?.latitude?.toFixed(3)}°N, {userLocation?.longitude?.toFixed(3)}°E)
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAreaPicker((prev) => !prev)}
+                    className="px-2.5 py-1 rounded-lg bg-lavender-100 hover:bg-lavender-200 text-plum-900 text-xs font-bold border border-lavender-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <MapPin size={12} className="text-rose-600" />
+                    <span>{showAreaPicker ? "Close Area Options" : "Change Area"}</span>
+                  </button>
+                </div>
+
+                {areaNotice && (
+                  <p className="text-xs font-bold text-emerald-800 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+                    {areaNotice}
+                  </p>
+                )}
+
+                {/* Quick Area Preset Pills */}
+                {showAreaPicker && (
+                  <div className="pt-2 border-t border-rose-100 space-y-2">
+                    <p className="text-[10px] uppercase font-bold text-plum-600">
+                      Select City / Region:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {CITY_PRESETS.map((preset) => {
+                        const isCurrent =
+                          userLocation &&
+                          Math.abs(userLocation.latitude - (preset.latitude ?? preset.lat)) < 0.04 &&
+                          Math.abs(userLocation.longitude - (preset.longitude ?? preset.lng)) < 0.04;
+                        return (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => {
+                              setManualLocation(preset);
+                              const cityName = preset.city || preset.name.split(" (")[0];
+                              setAreaNotice(`📍 Area updated to ${cityName}! Hospital routing active.`);
+                              setTimeout(() => setAreaNotice(""), 3000);
+                            }}
+                            className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                              isCurrent
+                                ? "bg-plum-900 text-white border-plum-900 font-bold shadow-2xs"
+                                : "bg-white hover:bg-lavender-50 text-plum-900 border-plum-200 font-medium"
+                            }`}
+                          >
+                            {isCurrent && "✓ "}
+                            {preset.name.split(" (")[0]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-wrap">
                 {/* Prominent Hospital Locator CTA with Live Radar Indicator */}
                 <button
@@ -104,14 +182,14 @@ export default function RedFlagAlertBanner({
                   onClick={handleFindNearestEmergencyCare}
                   disabled={isLocating}
                   className="inline-flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 active:scale-[0.98] text-white shadow-md shadow-rose-600/30 transition-all cursor-pointer group shrink-0"
-                  title="Find Nearest Emergency Care using live device GPS"
+                  title={`Find Nearest Emergency Care in ${userLocation?.city || 'Vijayawada'}`}
                 >
                   {/* Subtle pulsating live-radar indicator */}
                   <span className="relative flex h-3 w-3 items-center justify-center">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-80" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
                   </span>
-                  <span>{isLocating ? "Locating Nearest Hospitals..." : "Find Nearest Emergency Care"}</span>
+                  <span>{isLocating ? "Locating Nearest Hospitals..." : `Find Nearest Emergency Care in ${userLocation?.city || "Area"}`}</span>
                   <ExternalLink size={14} className="text-rose-200 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
@@ -165,7 +243,9 @@ export default function RedFlagAlertBanner({
               {/* Informative Status Label */}
               <p className="text-[11px] text-plum-600 flex items-center gap-1.5 font-medium">
                 <Navigation size={12} className="text-rose-500 shrink-0" />
-                <span>Uses device GPS for real-time routing (No Google Maps API key required)</span>
+                <span>
+                  📍 Centered on {userLocation?.city || userLocation?.address || "Selected Area"} • Opens Google Maps routing (No API key needed)
+                </span>
               </p>
             </div>
           </div>
