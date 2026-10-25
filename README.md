@@ -10,7 +10,7 @@
 ## 🔗 Live Published Website
 
 > **Access the live deployed application here:**  
-> ### 🌐 **[https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app](https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app)**
+> ### 🌐 **https://femnura.ai.studio**
 
 ---
 
@@ -25,7 +25,7 @@ To experience a complete longitudinal history with pre-populated health logs, cy
 1. Open the [Live Website](https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app).
 2. Click **Log In** on the top navigation bar or the hero section.
 3. Enter the demo profile credentials:
-   - **Email:** `daedeepyakanteti@gmail.com`
+   - **Email:** `example@gmail.com`
    - **Password / PIN:** *(Leave blank or enter any PIN)*
 4. Click **Log In to Dashboard**.
 5. **Pre-configured live records include:**
@@ -251,7 +251,7 @@ npm run build
 
 - **Published Web Application URL:**  
   [https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app](https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app)
-- **Primary Demo Account:** `daedeepyakanteti@gmail.com` *(Password optional)*
+- **Primary Demo Account:** `example@gmail.com` *(Password optional)*
 
 ---
 *FemNura — Your Health. Your Priority.*
