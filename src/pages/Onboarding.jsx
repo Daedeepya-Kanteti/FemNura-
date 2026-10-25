@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   ArrowLeft,
-  Sparkles,
   ShieldCheck,
   UserPlus,
   Trash2,
@@ -12,8 +11,12 @@ import {
   Mail,
   User,
   CheckCircle2,
-  ChevronRight,
+  AlertCircle,
+  Eye,
+  EyeOff,
   Clock,
+  Sparkles,
+  LogIn,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 import { Button, Card, Badge } from "../components/UI.jsx";
@@ -32,44 +35,56 @@ export default function Onboarding() {
     savedAccounts,
     lastLoginAccount,
     loginWithAccount,
-    registerOrLogin,
+    loginUser,
+    signupUser,
     removeSavedAccount,
   } = useDemoData();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // If there are saved accounts, start on the Google-style account selector
-  const [view, setView] = useState(() => (savedAccounts && savedAccounts.length > 0 ? "choose_account" : "create_account"));
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
-  const [focus, setFocus] = useState([]);
-  const [selectedAccountForPassword, setSelectedAccountForPassword] = useState(null);
+  // Determine active tab from URL query params or state
+  const queryParams = new URLSearchParams(location.search);
+  const paramTab = queryParams.get("tab") || queryParams.get("mode");
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (paramTab === "signup" || paramTab === "register") return "signup";
+    if (paramTab === "login" || paramTab === "signin") return "login";
+    return savedAccounts && savedAccounts.length > 0 ? "login" : "login";
+  });
+
+  // Keep active tab in sync if query param changes
+  useEffect(() => {
+    if (paramTab === "signup" || paramTab === "register") {
+      setActiveTab("signup");
+    } else if (paramTab === "login" || paramTab === "signin") {
+      setActiveTab("login");
+    }
+  }, [paramTab]);
+
+  // Log In Form State
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginRememberMe, setLoginRememberMe] = useState(true);
+  const [loginError, setLoginError] = useState("");
+  const [loginSuccess, setLoginSuccess] = useState("");
+
+  // Sign Up Form State
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [signupRememberMe, setSignupRememberMe] = useState(true);
+  const [signupFocus, setSignupFocus] = useState([]);
+  const [signupError, setSignupError] = useState("");
+  const [signupSuccess, setSignupSuccess] = useState("");
 
   const toggleFocus = (f) =>
-    setFocus((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
-
-  const handleSelectSavedAccount = (account) => {
-    loginWithAccount(account);
-    navigate("/app");
-  };
-
-  const handleCreateOrLoginSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    registerOrLogin({
-      name: name.trim(),
-      email: email.trim() || `${name.trim().toLowerCase().replace(/[^a-z0-9]/g, "")}_${Date.now().toString().slice(-4)}@femnura.app`,
-      password,
-      focus,
-    });
-    navigate("/app");
-  };
+    setSignupFocus((prev) => (prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]));
 
   const formatLastActive = (dateString) => {
-    if (!dateString) return "Saved account";
+    if (!dateString) return "Saved profile";
     try {
       const d = new Date(dateString);
       const diffHours = Math.round((Date.now() - d.getTime()) / (1000 * 60 * 60));
@@ -78,17 +93,89 @@ export default function Onboarding() {
       const diffDays = Math.round(diffHours / 24);
       return `${diffDays}d ago`;
     } catch {
-      return "Saved account";
+      return "Saved profile";
     }
   };
 
+  // Handle direct login submission
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    setLoginError("");
+    setLoginSuccess("");
+
+    if (!loginEmail.trim()) {
+      setLoginError("Please enter your email address.");
+      return;
+    }
+
+    const res = loginUser({
+      email: loginEmail.trim(),
+      password: loginPassword,
+      rememberMe: loginRememberMe,
+    });
+
+    if (res.success) {
+      setLoginSuccess(`Welcome back, ${res.account.name || "friend"}! Restoring your health records...`);
+      setTimeout(() => {
+        navigate("/app");
+      }, 400);
+    } else {
+      setLoginError(res.error || "Unable to log in. Please check your credentials.");
+    }
+  };
+
+  // Handle direct sign up submission
+  const handleSignupSubmit = (e) => {
+    e.preventDefault();
+    setSignupError("");
+    setSignupSuccess("");
+
+    if (!signupName.trim()) {
+      setSignupError("Please enter your name.");
+      return;
+    }
+    if (!signupEmail.trim()) {
+      setSignupError("Please enter your email address.");
+      return;
+    }
+
+    const res = signupUser({
+      name: signupName.trim(),
+      email: signupEmail.trim(),
+      password: signupPassword,
+      focus: signupFocus,
+      rememberMe: signupRememberMe,
+    });
+
+    if (res.success) {
+      setSignupSuccess(`Account created for ${res.account.name}! Opening your dashboard...`);
+      setTimeout(() => {
+        navigate("/app");
+      }, 400);
+    } else {
+      setSignupError(res.error || "Unable to create account. Please try again.");
+    }
+  };
+
+  // Handle clicking a saved device profile
+  const handleSelectSavedAccount = (acc) => {
+    setLoginError("");
+    setLoginEmail(acc.email);
+    loginWithAccount(acc);
+    setLoginSuccess(`Welcome back, ${acc.name}! Restoring your health records...`);
+    setTimeout(() => {
+      navigate("/app");
+    }, 300);
+  };
+
   return (
-    <div className="min-h-screen bg-grad-hero flex flex-col items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-grad-hero flex flex-col items-center justify-center px-4 sm:px-6 py-10 sm:py-14">
+      {/* Top Header Bar */}
       <div className="w-full max-w-lg flex items-center justify-between mb-6">
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-plum-600 hover:text-plum-950 bg-white/80 hover:bg-white border border-plum-200/80 px-3 py-1.5 rounded-xl transition-all shadow-xs focus-ring"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-plum-700 hover:text-plum-950 bg-white/80 hover:bg-white border border-plum-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs focus-ring cursor-pointer"
         >
           <ArrowLeft size={14} /> Back to Home
         </button>
@@ -97,176 +184,287 @@ export default function Onboarding() {
         </Link>
       </div>
 
-      <Card className="w-full max-w-lg p-7 sm:p-9 relative overflow-hidden shadow-xl border-plum-100">
+      <Card className="w-full max-w-lg p-6 sm:p-9 relative overflow-hidden shadow-xl border-plum-100 bg-white/95 backdrop-blur-md">
+        {/* Tab Toggle Switch */}
+        <div className="grid grid-cols-2 p-1 bg-lavender-100/70 rounded-2xl mb-6 border border-plum-200/70">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("login");
+              setLoginError("");
+              setSignupError("");
+            }}
+            className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "login"
+                ? "bg-white text-plum-900 shadow-sm"
+                : "text-plum-600 hover:text-plum-900 hover:bg-white/50"
+            }`}
+          >
+            <LogIn size={15} />
+            <span>Log In</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("signup");
+              setLoginError("");
+              setSignupError("");
+            }}
+            className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === "signup"
+                ? "bg-white text-plum-900 shadow-sm"
+                : "text-plum-600 hover:text-plum-900 hover:bg-white/50"
+            }`}
+          >
+            <UserPlus size={15} />
+            <span>Sign Up</span>
+          </button>
+        </div>
+
         <AnimatePresence mode="wait">
-          {/* VIEW 1: GOOGLE-STYLE ACCOUNT CHOOSER */}
-          {view === "choose_account" && (
+          {/* TAB 1: LOG IN */}
+          {activeTab === "login" && (
             <motion.div
-              key="choose"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25 }}
+              key="login-tab"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ duration: 0.2 }}
             >
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 rounded-full bg-lavender-100 text-plum-700 flex items-center justify-center mx-auto mb-3 shadow-inner">
-                  <User size={22} />
+              <div className="mb-5 text-center">
+                <h1 className="font-display text-2xl font-bold text-plum-950">
+                  Welcome to FemNura
+                </h1>
+                <p className="text-xs sm:text-sm text-plum-600 mt-1">
+                  Log in to access your private symptom logs, cycle insights, and saved records.
+                </p>
+              </div>
+
+              {loginError && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-rose-600" />
+                  <span>{loginError}</span>
                 </div>
-                <h1 className="font-display text-2xl font-semibold text-plum-900">Choose an account</h1>
-                <p className="text-sm text-plum-600 mt-1">to continue to FemNura</p>
-              </div>
+              )}
 
-              {/* Saved accounts list */}
-              <div className="divide-y divide-plum-100 border border-plum-200/80 rounded-2xl overflow-hidden mb-6 bg-white/70">
-                {savedAccounts.map((acc) => {
-                  const isLast = lastLoginAccount?.id === acc.id;
-                  const initial = (acc.name?.[0] || "U").toUpperCase();
-
-                  return (
-                    <div
-                      key={acc.id}
-                      className="group flex items-center justify-between p-4 hover:bg-lavender-50/70 transition-all cursor-pointer"
-                      onClick={() => handleSelectSavedAccount(acc)}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div
-                          className="w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-base shadow-sm shrink-0"
-                          style={{ backgroundColor: acc.avatarColor || "#7B5689" }}
-                        >
-                          {initial}
-                        </div>
-                        <div className="min-w-0 text-left">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-plum-900 text-sm truncate">{acc.name}</p>
-                            {isLast && (
-                              <span className="text-[10px] font-semibold bg-sage-100 text-sage-800 px-2 py-0.5 rounded-full shrink-0">
-                                Last logged in
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-plum-500 truncate">{acc.email}</p>
-                          <p className="text-[11px] text-plum-400 mt-0.5 flex items-center gap-1">
-                            <Clock size={10} /> Active {formatLastActive(acc.lastLoginTime)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          title="Remove saved account"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeSavedAccount(acc.id);
-                          }}
-                          className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-80 group-hover:opacity-100"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                        <div className="text-plum-400 group-hover:text-plum-700 transition-colors">
-                          <ChevronRight size={18} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Action buttons */}
-              <div className="space-y-3">
-                <Button
-                  variant="secondary"
-                  className="w-full justify-center bg-white/80 border-plum-200 hover:bg-white text-plum-800"
-                  onClick={() => {
-                    setName("");
-                    setEmail("");
-                    setPassword("");
-                    setView("create_account");
-                  }}
-                >
-                  <UserPlus size={16} /> Use another account
-                </Button>
-
-                <div className="flex flex-col items-center justify-center gap-2 text-xs text-plum-500 pt-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-sage-600" />
-                    <span>Your login credentials & health data are saved securely.</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/")}
-                    className="text-xs text-plum-500 hover:text-plum-800 font-semibold inline-flex items-center gap-1 mt-1 cursor-pointer"
-                  >
-                    <ArrowLeft size={13} /> Return to Home page
-                  </button>
+              {loginSuccess && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                  <CheckCircle2 size={16} className="shrink-0 text-emerald-600 animate-spin" />
+                  <span>{loginSuccess}</span>
                 </div>
-              </div>
-            </motion.div>
-          )}
+              )}
 
-          {/* VIEW 2: NEW / ANOTHER ACCOUNT FORM */}
-          {view === "create_account" && (
-            <motion.div
-              key="create"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h1 className="font-display text-2xl font-semibold text-plum-900">Sign in to FemNura</h1>
-                {savedAccounts.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setView("choose_account")}
-                    className="text-xs font-semibold text-plum-600 hover:text-plum-900 flex items-center gap-1 bg-lavender-100/60 hover:bg-lavender-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft size={13} /> Saved accounts ({savedAccounts.length})
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => navigate("/")}
-                    className="text-xs font-semibold text-plum-600 hover:text-plum-900 flex items-center gap-1 bg-lavender-100/60 hover:bg-lavender-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft size={13} /> Back to Home
-                  </button>
-                )}
-              </div>
-
-              <p className="text-sm text-plum-600 mb-6 leading-relaxed">
-                Enter your details to create or access your profile. Credentials and health logs are saved for instant one-click login next time.
-              </p>
-
-              <form onSubmit={handleCreateOrLoginSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block mb-1.5">
-                    Your Name *
+              {/* Profiles saved on THIS device only */}
+              {savedAccounts && savedAccounts.length > 0 && (
+                <div className="mb-5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-plum-700 block mb-2">
+                    Saved on this device
                   </label>
-                  <div className="relative">
-                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
-                    <input
-                      autoFocus
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Daedeepya, Sarah, Maya"
-                      className="w-full rounded-xl border border-plum-200 pl-10 pr-4 py-3 text-sm text-plum-900 focus-ring bg-white"
-                    />
+                  <div className="divide-y divide-plum-100 border border-plum-200/90 rounded-2xl overflow-hidden bg-white/80 shadow-2xs">
+                    {savedAccounts.map((acc) => {
+                      const isLast = lastLoginAccount?.id === acc.id;
+                      const initial = (acc.name?.[0] || "U").toUpperCase();
+
+                      return (
+                        <div
+                          key={acc.id}
+                          onClick={() => handleSelectSavedAccount(acc)}
+                          className="group flex items-center justify-between p-3.5 hover:bg-lavender-50/70 transition-all cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-2xs shrink-0"
+                              style={{ backgroundColor: acc.avatarColor || "#7B5689" }}
+                            >
+                              {initial}
+                            </div>
+                            <div className="min-w-0 text-left">
+                              <div className="flex items-center gap-2">
+                                <p className="font-bold text-plum-900 text-sm truncate">{acc.name}</p>
+                                {isLast && (
+                                  <span className="text-[10px] font-bold bg-sage-100 text-sage-800 px-2 py-0.5 rounded-full shrink-0">
+                                    Last active
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-plum-500 truncate">{acc.email}</p>
+                              <p className="text-[10px] text-plum-400 mt-0.5 flex items-center gap-1">
+                                <Clock size={10} /> {formatLastActive(acc.lastLoginTime)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <button
+                              type="button"
+                              title="Remove profile from this device"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeSavedAccount(acc.id);
+                              }}
+                              className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                            <span className="text-xs font-bold text-plum-700 bg-lavender-100 group-hover:bg-plum-800 group-hover:text-white px-2.5 py-1.5 rounded-xl transition-all">
+                              Log in
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="relative flex py-4 items-center">
+                    <div className="flex-grow border-t border-plum-200"></div>
+                    <span className="flex-shrink mx-3 text-[11px] font-bold uppercase tracking-wider text-plum-400">
+                      Or log in with email
+                    </span>
+                    <div className="flex-grow border-t border-plum-200"></div>
                   </div>
                 </div>
+              )}
 
+              {/* Login Form */}
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block mb-1.5">
-                    Email Address (optional)
+                    Email Address *
                   </label>
                   <div className="relative">
                     <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
                     <input
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="e.g. daedeepyakanteti@gmail.com"
+                      required
+                      autoFocus={!savedAccounts || savedAccounts.length === 0}
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      placeholder="e.g. yourname@example.com"
+                      className="w-full rounded-xl border border-plum-200 pl-10 pr-4 py-3 text-sm text-plum-900 focus-ring bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block">
+                      Password / PIN
+                    </label>
+                    <span className="text-[11px] text-plum-400 font-normal">
+                      (Optional if not configured)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
+                    <input
+                      type={showLoginPassword ? "text" : "password"}
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="Enter your password or PIN"
+                      className="w-full rounded-xl border border-plum-200 pl-10 pr-10 py-3 text-sm text-plum-900 focus-ring bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-plum-400 hover:text-plum-700 cursor-pointer"
+                    >
+                      {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={loginRememberMe}
+                      onChange={(e) => setLoginRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded text-plum-700 accent-plum-700 border-plum-300 focus:ring-plum-500"
+                    />
+                    <span className="text-xs text-plum-700 font-medium">
+                      Remember me on this device
+                    </span>
+                  </label>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-full justify-center py-3 text-sm font-semibold shadow-md cursor-pointer"
+                    disabled={!loginEmail.trim()}
+                  >
+                    <span>Log In to Dashboard</span>
+                    <ArrowRight size={16} />
+                  </Button>
+                </div>
+              </form>
+
+              <div className="mt-6 pt-4 border-t border-plum-100 text-center">
+                <p className="text-xs text-plum-600">
+                  Don't have an account yet?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("signup");
+                      setLoginError("");
+                    }}
+                    className="font-bold text-plum-800 hover:text-plum-950 underline cursor-pointer"
+                  >
+                    Sign up now
+                  </button>
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 2: SIGN UP */}
+          {activeTab === "signup" && (
+            <motion.div
+              key="signup-tab"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="mb-5 text-center">
+                <h1 className="font-display text-2xl font-bold text-plum-950">
+                  Create Your Account
+                </h1>
+                <p className="text-xs sm:text-sm text-plum-600 mt-1">
+                  Private, confidential, and saved to your device. No medical ads, ever.
+                </p>
+              </div>
+
+              {signupError && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-rose-600" />
+                  <span>{signupError}</span>
+                </div>
+              )}
+
+              {signupSuccess && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+                  <CheckCircle2 size={16} className="shrink-0 text-emerald-600 animate-spin" />
+                  <span>{signupSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSignupSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block mb-1.5">
+                    Your Full Name *
+                  </label>
+                  <div className="relative">
+                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={signupName}
+                      onChange={(e) => setSignupName(e.target.value)}
+                      placeholder="e.g. Maya Sharma, Sarah, Elena"
                       className="w-full rounded-xl border border-plum-200 pl-10 pr-4 py-3 text-sm text-plum-900 focus-ring bg-white"
                     />
                   </div>
@@ -274,89 +472,125 @@ export default function Onboarding() {
 
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block mb-1.5">
-                    Password / PIN (optional)
+                    Email Address *
                   </label>
                   <div className="relative">
-                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
+                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
                     <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Keep optional or enter a personal PIN"
+                      type="email"
+                      required
+                      value={signupEmail}
+                      onChange={(e) => setSignupEmail(e.target.value)}
+                      placeholder="e.g. maya@example.com"
                       className="w-full rounded-xl border border-plum-200 pl-10 pr-4 py-3 text-sm text-plum-900 focus-ring bg-white"
                     />
                   </div>
                 </div>
 
-                {/* Focus areas */}
-                <div className="pt-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block mb-2">
-                    What matters most right now?
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {focusOptions.map((f) => (
-                      <button
-                        type="button"
-                        key={f}
-                        onClick={() => toggleFocus(f)}
-                        className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                          focus.includes(f)
-                            ? "bg-plum-700 text-white border-plum-700 font-semibold"
-                            : "bg-white text-plum-700 border-plum-200 hover:border-plum-400"
-                        }`}
-                      >
-                        {f}
-                      </button>
-                    ))}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block">
+                      Create Password / PIN
+                    </label>
+                    <span className="text-[11px] text-plum-400 font-normal">
+                      (Optional personal security)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum-400" />
+                    <input
+                      type={showSignupPassword ? "text" : "password"}
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      placeholder="Choose a password or PIN"
+                      className="w-full rounded-xl border border-plum-200 pl-10 pr-10 py-3 text-sm text-plum-900 focus-ring bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-plum-400 hover:text-plum-700 cursor-pointer"
+                    >
+                      {showSignupPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center gap-2">
+                {/* Health Focus Area */}
+                <div className="pt-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-plum-700 block mb-2">
+                    What are your main health priorities? (Optional)
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    {focusOptions.map((f) => {
+                      const isSelected = signupFocus.includes(f);
+                      return (
+                        <button
+                          type="button"
+                          key={f}
+                          onClick={() => toggleFocus(f)}
+                          className={`text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-plum-800 text-white border-plum-800 font-semibold shadow-2xs"
+                              : "bg-white text-plum-700 border-plum-200 hover:border-plum-400"
+                          }`}
+                        >
+                          {f}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"
-                    id="remember"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
+                    id="signupRemember"
+                    checked={signupRememberMe}
+                    onChange={(e) => setSignupRememberMe(e.target.checked)}
                     className="w-4 h-4 rounded text-plum-700 accent-plum-700 border-plum-300 focus:ring-plum-500"
                   />
-                  <label htmlFor="remember" className="text-xs text-plum-700 font-medium cursor-pointer">
-                    Save login credentials for quick 1-click login like Google
+                  <label htmlFor="signupRemember" className="text-xs text-plum-700 font-medium cursor-pointer">
+                    Remember me on this device for quick login
                   </label>
                 </div>
 
-                <div className="pt-3">
+                <div className="pt-2">
                   <Button
                     type="submit"
                     variant="primary"
-                    className="w-full justify-center py-3 text-sm font-semibold"
-                    disabled={!name.trim()}
+                    className="w-full justify-center py-3 text-sm font-semibold shadow-md cursor-pointer"
+                    disabled={!signupName.trim() || !signupEmail.trim()}
                   >
-                    Save & Continue to Dashboard <ArrowRight size={16} />
+                    <span>Create Profile & Enter FemNura</span>
+                    <ArrowRight size={16} />
                   </Button>
                 </div>
               </form>
 
-              <div className="text-center mt-5 pt-4 border-t border-plum-100 flex items-center justify-center gap-4">
-                {savedAccounts.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-plum-100 text-center">
+                <p className="text-xs text-plum-600">
+                  Already have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => setView("choose_account")}
-                    className="text-xs text-plum-500 hover:text-plum-800 font-semibold inline-flex items-center gap-1 cursor-pointer"
+                    onClick={() => {
+                      setActiveTab("login");
+                      setSignupError("");
+                    }}
+                    className="font-bold text-plum-800 hover:text-plum-950 underline cursor-pointer"
                   >
-                    <ArrowLeft size={13} /> Back to saved accounts
+                    Log in here
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => navigate("/")}
-                  className="text-xs text-plum-400 hover:text-plum-700 font-medium inline-flex items-center gap-1 cursor-pointer"
-                >
-                  <ArrowLeft size={13} /> Back to Home
-                </button>
+                </p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Security & Privacy Pledge Footer */}
+        <div className="mt-6 pt-4 border-t border-plum-100/80 flex items-center justify-center gap-2 text-xs text-plum-500">
+          <ShieldCheck size={14} className="text-sage-600 shrink-0" />
+          <span>Your health records stay on your device and are never shared.</span>
+        </div>
       </Card>
     </div>
   );

@@ -146,30 +146,23 @@ function createFreshUserStorage(account) {
 }
 
 export function DemoDataProvider({ children }) {
-  // Saved accounts list
+  // Saved accounts list - starts empty on fresh devices/browsers unless previously saved
   const [savedAccounts, setSavedAccounts] = useState(() => {
     const existing = safeLocalStorageGet(SAVED_ACCOUNTS_KEY, null);
-    if (existing && Array.isArray(existing) && existing.length > 0) {
+    if (existing && Array.isArray(existing)) {
       return existing;
     }
-    // Seed default account on first use
-    const initial = [DEFAULT_ACCOUNT];
-    safeLocalStorageSet(SAVED_ACCOUNTS_KEY, initial);
-    saveUserStorage(DEFAULT_ACCOUNT.id, SEED_DATA_FOR_DEFAULT);
-    return initial;
+    return [];
   });
 
-  // Track the last login account
+  // Track the last login account - null on fresh devices
   const [lastLoginAccount, setLastLoginAccount] = useState(() => {
-    const last = safeLocalStorageGet(LAST_LOGIN_KEY, null);
-    if (last) return last;
-    return DEFAULT_ACCOUNT;
+    return safeLocalStorageGet(LAST_LOGIN_KEY, null);
   });
 
-  // Currently active user session
+  // Currently active user session - null until someone logs in or signs up
   const [currentAccount, setCurrentAccount] = useState(() => {
-    const last = safeLocalStorageGet(LAST_LOGIN_KEY, null);
-    return last || DEFAULT_ACCOUNT;
+    return safeLocalStorageGet(LAST_LOGIN_KEY, null);
   });
 
   const [isDemoActive, setIsDemoActive] = useState(() => Boolean(currentAccount));
@@ -200,8 +193,12 @@ export function DemoDataProvider({ children }) {
     if (!account?.id) return;
     let data = getUserStorage(account.id);
     if (!data) {
-      // If default account, provide seed data; otherwise create completely clean fresh storage
-      data = account.id === DEFAULT_ACCOUNT.id ? SEED_DATA_FOR_DEFAULT : createFreshUserStorage(account);
+      // If default account or Daedeepya email, provide seed data; otherwise create completely clean fresh storage
+      data =
+        account.id === DEFAULT_ACCOUNT.id ||
+        account.email?.toLowerCase() === DEFAULT_ACCOUNT.email.toLowerCase()
+          ? SEED_DATA_FOR_DEFAULT
+          : createFreshUserStorage(account);
       saveUserStorage(account.id, data);
     }
 
@@ -738,7 +735,7 @@ export function DemoDataProvider({ children }) {
     const updatedAccount = { ...account, lastLoginTime: new Date().toISOString() };
 
     setSavedAccounts((prev) => {
-      const idx = prev.findIndex((a) => a.id === account.id || a.email.toLowerCase() === account.email.toLowerCase());
+      const idx = prev.findIndex((a) => a.id === account.id || a.email?.toLowerCase() === account.email?.toLowerCase());
       let updated;
       if (idx >= 0) {
         updated = [...prev];
@@ -759,43 +756,189 @@ export function DemoDataProvider({ children }) {
     loadUserStorageIntoState(updatedAccount);
   };
 
-  // Register a new user or sign in with distinct credentials
-  const registerOrLogin = ({ name, email, password = "", focus = [] }) => {
-    const trimmedName = name?.trim() || "User";
-    const cleanEmail = email?.trim().toLowerCase() || `${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Date.now()}@femnura.app`;
-    // Unique account ID per email
+  // Dedicated Log In function
+  const loginUser = ({ email, password = "", rememberMe = true }) => {
+    const cleanEmail = email?.trim().toLowerCase();
+    if (!cleanEmail) {
+      return { success: false, error: "Please enter your email address." };
+    }
+
+    // Special check for Daedeepya demo profile so her rich data is preserved across devices
+    if (cleanEmail === DEFAULT_ACCOUNT.email.toLowerCase()) {
+      const acc = {
+        ...DEFAULT_ACCOUNT,
+        lastLoginTime: new Date().toISOString(),
+      };
+      if (rememberMe) {
+        setSavedAccounts((prev) => {
+          const filtered = prev.filter((a) => a.email?.toLowerCase() !== cleanEmail);
+          const updated = [acc, ...filtered];
+          safeLocalStorageSet(SAVED_ACCOUNTS_KEY, updated);
+          return updated;
+        });
+      }
+      safeLocalStorageSet(LAST_LOGIN_KEY, acc);
+      setLastLoginAccount(acc);
+      setCurrentAccount(acc);
+      setIsDemoActive(true);
+
+      let existingData = getUserStorage(acc.id);
+      if (!existingData) {
+        existingData = SEED_DATA_FOR_DEFAULT;
+        saveUserStorage(acc.id, existingData);
+      }
+      loadUserStorageIntoState(acc);
+      return { success: true, account: acc };
+    }
+
+    // Check existing saved accounts on this device
+    const existingAcc = savedAccounts.find((a) => a.email?.toLowerCase() === cleanEmail);
+    if (existingAcc) {
+      if (existingAcc.credentials?.password && password && existingAcc.credentials.password !== password) {
+        return { success: false, error: "Incorrect password for this account. Please try again." };
+      }
+      const updated = {
+        ...existingAcc,
+        lastLoginTime: new Date().toISOString(),
+      };
+      if (password && !existingAcc.credentials?.password) {
+        updated.credentials = { email: cleanEmail, password };
+      }
+      if (rememberMe) {
+        setSavedAccounts((prev) => {
+          const list = prev.map((a) => (a.id === existingAcc.id ? updated : a));
+          safeLocalStorageSet(SAVED_ACCOUNTS_KEY, list);
+          return list;
+        });
+      }
+      safeLocalStorageSet(LAST_LOGIN_KEY, updated);
+      setLastLoginAccount(updated);
+      setCurrentAccount(updated);
+      setIsDemoActive(true);
+      loadUserStorageIntoState(updated);
+      return { success: true, account: updated };
+    }
+
+    // If account was not saved on this device, check/initialize isolated storage for this email
     const accountId = `acc_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const namePrefix = cleanEmail.split("@")[0].replace(/[._-]/g, " ");
+    const inferredName = namePrefix.charAt(0).toUpperCase() + namePrefix.slice(1);
 
     const newAccount = {
       id: accountId,
-      name: trimmedName,
+      name: inferredName || "User",
       email: cleanEmail,
-      avatarColor: ["#7B5689", "#A64D79", "#2C7A7B", "#C05621", "#4A5568", "#6B46C1"][Math.floor(Math.random() * 6)],
+      avatarColor: ["#7B5689", "#A64D79", "#2C7A7B", "#C05621", "#4A5568", "#6B46C1"][
+        Math.abs(cleanEmail.charCodeAt(0) || 0) % 6
+      ],
       lastLoginTime: new Date().toISOString(),
-      focus,
+      focus: [],
       credentials: { email: cleanEmail, password },
     };
 
-    setSavedAccounts((prev) => {
-      const filtered = prev.filter((a) => a.id !== accountId && a.email.toLowerCase() !== cleanEmail);
-      const updated = [newAccount, ...filtered];
-      safeLocalStorageSet(SAVED_ACCOUNTS_KEY, updated);
-      return updated;
-    });
+    if (rememberMe) {
+      setSavedAccounts((prev) => {
+        const filtered = prev.filter((a) => a.id !== accountId);
+        const updated = [newAccount, ...filtered];
+        safeLocalStorageSet(SAVED_ACCOUNTS_KEY, updated);
+        return updated;
+      });
+    }
 
     safeLocalStorageSet(LAST_LOGIN_KEY, newAccount);
     setLastLoginAccount(newAccount);
     setCurrentAccount(newAccount);
     setIsDemoActive(true);
 
-    // If this user has never had storage before, initialize fresh empty storage for this user
+    let existingData = getUserStorage(accountId);
+    if (!existingData) {
+      existingData = createFreshUserStorage(newAccount);
+      saveUserStorage(accountId, existingData);
+    }
+    loadUserStorageIntoState(newAccount);
+    return { success: true, account: newAccount };
+  };
+
+  // Dedicated Sign Up function
+  const signupUser = ({ name, email, password = "", focus = [], rememberMe = true }) => {
+    const trimmedName = name?.trim();
+    if (!trimmedName) {
+      return { success: false, error: "Please enter your name." };
+    }
+    const cleanEmail = email?.trim().toLowerCase();
+    if (!cleanEmail) {
+      return { success: false, error: "Please enter your email address." };
+    }
+
+    const accountId = `acc_${cleanEmail.replace(/[^a-zA-Z0-9]/g, "_")}`;
+
+    const newAccount = {
+      id: accountId,
+      name: trimmedName,
+      email: cleanEmail,
+      avatarColor: ["#7B5689", "#A64D79", "#2C7A7B", "#C05621", "#4A5568", "#6B46C1"][
+        Math.abs(cleanEmail.charCodeAt(0) || 0) % 6
+      ],
+      lastLoginTime: new Date().toISOString(),
+      focus,
+      credentials: { email: cleanEmail, password },
+    };
+
+    if (rememberMe) {
+      setSavedAccounts((prev) => {
+        const filtered = prev.filter((a) => a.id !== accountId && a.email?.toLowerCase() !== cleanEmail);
+        const updated = [newAccount, ...filtered];
+        safeLocalStorageSet(SAVED_ACCOUNTS_KEY, updated);
+        return updated;
+      });
+    }
+
+    safeLocalStorageSet(LAST_LOGIN_KEY, newAccount);
+    setLastLoginAccount(newAccount);
+    setCurrentAccount(newAccount);
+    setIsDemoActive(true);
+
     let existingStorage = getUserStorage(accountId);
     if (!existingStorage) {
-      existingStorage = createFreshUserStorage(newAccount);
+      existingStorage =
+        cleanEmail === DEFAULT_ACCOUNT.email.toLowerCase()
+          ? SEED_DATA_FOR_DEFAULT
+          : createFreshUserStorage(newAccount);
       saveUserStorage(accountId, existingStorage);
     }
 
     loadUserStorageIntoState(newAccount);
+    return { success: true, account: newAccount };
+  };
+
+  // Register a new user or sign in with distinct credentials
+  const registerOrLogin = ({ name, email, password = "", focus = [] }) => {
+    return signupUser({ name, email, password, focus, rememberMe: true });
+  };
+
+  // Full clean logout function
+  const logoutUser = () => {
+    setCurrentAccount(null);
+    setIsDemoActive(false);
+    setLastLoginAccount(null);
+    try {
+      localStorage.removeItem(LAST_LOGIN_KEY);
+    } catch (e) {
+      console.warn("Could not remove last login key", e);
+    }
+    setSymptoms([]);
+    setMoods([]);
+    setCycleEntries([]);
+    setReminders([]);
+    setVaultFilesState([]);
+    setDoctorSessions([]);
+    setTrustedContacts([]);
+    setEmergencyProfileState({
+      bloodGroup: "O+",
+      allergies: "None known",
+      conditions: "None reported",
+      emergencyNotes: "Please contact primary emergency contact immediately.",
+    });
   };
 
   const removeSavedAccount = (idToRemove) => {
@@ -820,25 +963,34 @@ export function DemoDataProvider({ children }) {
     }
 
     if (currentAccount?.id === idToRemove) {
-      setIsDemoActive(false);
-      setCurrentAccount(null);
+      logoutUser();
     }
   };
 
   const startDemo = (name, email) => {
-    registerOrLogin({ name, email });
+    signupUser({ name, email, rememberMe: true });
   };
 
   const endDemo = () => {
-    setIsDemoActive(false);
+    logoutUser();
   };
 
   // Helper to retrieve the last logged-in user and THAT user's exact storage data for the front page
   const getLastLoginData = () => {
-    const lastAcc = lastLoginAccount || savedAccounts[0] || DEFAULT_ACCOUNT;
-    const accountData = getUserStorage(lastAcc.id) || (lastAcc.id === DEFAULT_ACCOUNT.id ? SEED_DATA_FOR_DEFAULT : createFreshUserStorage(lastAcc));
+    const acc = currentAccount || lastLoginAccount || null;
+    if (!acc) {
+      return {
+        account: null,
+        data: null,
+      };
+    }
+    const accountData =
+      getUserStorage(acc.id) ||
+      (acc.id === DEFAULT_ACCOUNT.id || acc.email?.toLowerCase() === DEFAULT_ACCOUNT.email.toLowerCase()
+        ? SEED_DATA_FOR_DEFAULT
+        : createFreshUserStorage(acc));
     return {
-      account: lastAcc,
+      account: acc,
       data: accountData,
     };
   };
@@ -849,10 +1001,13 @@ export function DemoDataProvider({ children }) {
     userEmail: currentAccount?.email || "",
     currentAccount,
     isDemoActive,
-    // Google-style credentials & accounts
+    // Authentication & multi-profile management
     savedAccounts,
     lastLoginAccount,
     loginWithAccount,
+    loginUser,
+    signupUser,
+    logoutUser,
     registerOrLogin,
     removeSavedAccount,
     startDemo,

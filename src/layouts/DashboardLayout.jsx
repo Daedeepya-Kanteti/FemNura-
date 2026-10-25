@@ -55,22 +55,22 @@ const nav = [
 ];
 
 export default function DashboardLayout() {
-  const { isDemoActive, userName, userEmail, currentAccount, endDemo } = useDemoData();
+  const { isDemoActive, userName, userEmail, currentAccount, logoutUser } = useDemoData();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sosOpen, setSosOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (!isDemoActive) navigate("/start");
-  }, [isDemoActive]);
+    if (!isDemoActive || !currentAccount) navigate("/start?tab=login");
+  }, [isDemoActive, currentAccount]);
 
   const handleLogout = () => {
-    endDemo();
-    navigate("/");
+    logoutUser();
+    navigate("/start?tab=login");
   };
 
-  if (!isDemoActive) return null;
+  if (!isDemoActive || !currentAccount) return null;
 
   return (
     <div className="min-h-screen flex bg-ivory">
@@ -110,7 +110,7 @@ export default function DashboardLayout() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => navigate("/start")}
+              onClick={() => navigate("/start?tab=login")}
               className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-plum-700 bg-lavender-50 hover:bg-lavender-100 px-2.5 py-2 rounded-lg transition-colors focus-ring cursor-pointer"
             >
               <UserCheck size={14} /> Switch
@@ -230,7 +230,7 @@ export default function DashboardLayout() {
                   <button
                     onClick={() => {
                       setMobileOpen(false);
-                      navigate("/start");
+                      navigate("/start?tab=login");
                     }}
                     className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-plum-700 bg-lavender-50 hover:bg-lavender-100 px-2.5 py-2.5 rounded-lg transition-colors focus-ring"
                   >

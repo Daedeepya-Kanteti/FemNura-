@@ -118,8 +118,7 @@ export default function Landing() {
 }
 
 function Nav({ onOpenSOS, onOpenSwitchAccount }) {
-  const { getLastLoginData, loginWithAccount } = useDemoData();
-  const { account } = getLastLoginData();
+  const { currentAccount, savedAccounts, logoutUser } = useDemoData();
   const navigate = useNavigate();
 
   return (
@@ -144,43 +143,68 @@ function Nav({ onOpenSOS, onOpenSwitchAccount }) {
             <span>SOS</span>
           </button>
 
-          {/* Switch Account option right near Continue as <name> */}
-          <button
-            type="button"
-            onClick={onOpenSwitchAccount}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-plum-800 bg-white hover:bg-lavender-50 border border-plum-200/90 hover:border-plum-300 shadow-2xs transition-all cursor-pointer focus-ring"
-            title="Switch or choose another account profile"
-          >
-            <UserCheck size={14} className="text-plum-600" />
-            <span>Switch account</span>
-          </button>
+          {currentAccount ? (
+            <>
+              {savedAccounts && savedAccounts.length > 1 && (
+                <button
+                  type="button"
+                  onClick={onOpenSwitchAccount}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-plum-800 bg-white hover:bg-lavender-50 border border-plum-200/90 hover:border-plum-300 shadow-2xs transition-all cursor-pointer focus-ring"
+                  title="Switch or choose another account profile"
+                >
+                  <UserCheck size={14} className="text-plum-600" />
+                  <span>Switch</span>
+                </button>
+              )}
 
-          {/* Continue as <name> button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (account) {
-                loginWithAccount(account);
-                navigate("/app");
-              } else {
-                navigate("/start");
-              }
-            }}
-            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer focus-ring shrink-0"
-          >
-            {account && (
-              <span
-                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-2xs shrink-0"
-                style={{ backgroundColor: account.avatarColor || "#7B5689" }}
+              <button
+                type="button"
+                onClick={() => navigate("/app")}
+                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer focus-ring shrink-0"
               >
-                {(account.name?.[0] || "U").toUpperCase()}
-              </span>
-            )}
-            <span className="truncate max-w-[125px] sm:max-w-none">
-              {account ? `Continue as ${account.name}` : "Get Started"}
-            </span>
-            <ArrowRight size={14} className="hidden sm:inline" />
-          </button>
+                <span
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-2xs shrink-0"
+                  style={{ backgroundColor: currentAccount.avatarColor || "#7B5689" }}
+                >
+                  {(currentAccount.name?.[0] || "U").toUpperCase()}
+                </span>
+                <span className="truncate max-w-[120px] sm:max-w-none">
+                  {currentAccount.name}
+                </span>
+                <ArrowRight size={14} className="hidden sm:inline" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  logoutUser();
+                }}
+                className="px-2.5 py-2 text-xs font-semibold text-plum-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                title="Log out from current profile"
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate("/start?tab=login")}
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-plum-800 bg-white hover:bg-lavender-50 border border-plum-200/90 shadow-2xs transition-all cursor-pointer focus-ring"
+              >
+                Log In
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigate("/start?tab=signup")}
+                className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer focus-ring shrink-0"
+              >
+                <span>Get Started</span>
+                <ArrowRight size={14} className="hidden sm:inline" />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -188,8 +212,7 @@ function Nav({ onOpenSOS, onOpenSwitchAccount }) {
 }
 
 function Hero({ onOpenSwitchAccount }) {
-  const { getLastLoginData, loginWithAccount } = useDemoData();
-  const { account } = getLastLoginData();
+  const { currentAccount } = useDemoData();
   const navigate = useNavigate();
 
   return (
@@ -229,29 +252,43 @@ function Hero({ onOpenSwitchAccount }) {
             transition={{ duration: 0.7, delay: 0.32 }}
             className="mt-9 flex flex-wrap items-center gap-3"
           >
-            <button
-              type="button"
-              onClick={() => {
-                if (account) {
-                  loginWithAccount(account);
-                  navigate("/app");
-                } else {
-                  navigate("/start");
-                }
-              }}
-              className="px-6 py-3.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-base font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus-ring"
-            >
-              {account ? `Continue as ${account.name}` : "Start Your Health Journey"} <ArrowRight size={18} />
-            </button>
-            {account && (
-              <button
-                type="button"
-                onClick={onOpenSwitchAccount}
-                className="px-4 py-3.5 rounded-xl border border-plum-200 bg-white hover:bg-lavender-50 text-plum-800 text-sm font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer focus-ring"
-              >
-                <UserCheck size={16} className="text-plum-600" />
-                <span>Switch account</span>
-              </button>
+            {currentAccount ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate("/app")}
+                  className="px-6 py-3.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-base font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus-ring"
+                >
+                  <span>Continue as {currentAccount.name}</span>
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenSwitchAccount}
+                  className="px-4 py-3.5 rounded-xl border border-plum-200 bg-white hover:bg-lavender-50 text-plum-800 text-sm font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer focus-ring"
+                >
+                  <UserCheck size={16} className="text-plum-600" />
+                  <span>Switch account</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate("/start?tab=signup")}
+                  className="px-6 py-3.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-base font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus-ring"
+                >
+                  <span>Start Your Health Journey</span>
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/start?tab=login")}
+                  className="px-5 py-3.5 rounded-xl border border-plum-200 bg-white hover:bg-lavender-50 text-plum-800 text-sm font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer focus-ring"
+                >
+                  <span>Log In to Your Profile</span>
+                </button>
+              </>
             )}
             <a href="#features">
               <Button variant="secondary" size="lg">Explore FemNura</Button>
@@ -284,36 +321,36 @@ function Hero({ onOpenSwitchAccount }) {
 }
 
 function DashboardPreview() {
-  const { getLastLoginData } = useDemoData();
-  const { account, data } = getLastLoginData();
+  const { currentAccount, symptoms, moods, cycleEntries, doctorSessions } = useDemoData();
 
-  const name = account?.name || "Friend";
+  const isUserLoggedIn = Boolean(currentAccount);
+  const name = isUserLoggedIn ? currentAccount.name : "Friend";
   const avatarLetter = (name[0] || "F").toUpperCase();
-  const avatarColor = account?.avatarColor || "#7B5689";
+  const avatarColor = currentAccount?.avatarColor || "#7B5689";
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  // Cycle phase from real logged data
-  const latestCycle = data?.cycleEntries?.[0];
+  // Cycle phase from real logged data or preview default
+  const latestCycle = isUserLoggedIn ? cycleEntries?.[0] : null;
   const cycleTitle = latestCycle ? latestCycle.phase : "Day 14";
   const cycleSubtitle = latestCycle?.flow ? `${latestCycle.flow} flow` : "Fertile window";
 
-  // Mood from real logged data
-  const latestMood = data?.moods?.[0];
+  // Mood from real logged data or preview default
+  const latestMood = isUserLoggedIn ? moods?.[0] : null;
   const moodTitle = latestMood ? latestMood.mood : "Calm";
   const moodSubtitle = latestMood?.notes ? latestMood.notes.slice(0, 24) : "Trending steady";
 
-  // Symptoms from real logged data
+  // Symptoms from real logged data or preview default
   const symptomsList =
-    data?.symptoms && data.symptoms.length > 0
-      ? data.symptoms.slice(0, 3).map((s) => s.name)
-      : ["No active symptoms", "All logged clear"];
+    isUserLoggedIn && symptoms && symptoms.length > 0
+      ? symptoms.slice(0, 3).map((s) => s.name)
+      : ["Fatigue (Mild)", "Hydration check"];
 
-  // Prepared questions count from real logged data
-  const questionsCount =
-    data?.doctorSessions?.[0]?.questions?.length ||
-    (data?.symptoms?.length ? Math.min(data.symptoms.length + 1, 3) : 0);
+  // Prepared questions count
+  const questionsCount = isUserLoggedIn
+    ? doctorSessions?.[0]?.questions?.length || (symptoms?.length ? Math.min(symptoms.length + 1, 3) : 0)
+    : 2;
 
   return (
     <div className="relative animate-float">
@@ -323,7 +360,7 @@ function DashboardPreview() {
             <div className="flex items-center gap-2">
               <p className="text-xs text-plum-400 font-semibold uppercase tracking-wide">{greeting}</p>
               <span className="text-[10px] font-semibold bg-lavender-100 text-plum-700 px-2 py-0.5 rounded-full">
-                Last login profile
+                {isUserLoggedIn ? "Active Profile" : "Interactive Preview"}
               </span>
             </div>
             <p className="font-display text-xl font-semibold text-plum-800">Hi, {name} 👋</p>
@@ -353,7 +390,7 @@ function DashboardPreview() {
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs text-plum-500 font-semibold">Recent symptoms logged</p>
             <span className="text-[11px] text-plum-400">
-              {data?.symptoms?.length || 0} total logged
+              {isUserLoggedIn ? `${symptoms?.length || 0} logged` : "Sample logs"}
             </span>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -375,12 +412,12 @@ function DashboardPreview() {
             </span>
             <p className="text-sm font-bold text-white">
               {questionsCount > 0
-                ? `${questionsCount} question${questionsCount === 1 ? "" : "s"} ready for your doctor visit`
+                ? `${questionsCount} question${questionsCount === 1 ? "" : "s"} ready for doctor visit`
                 : "Ready to generate doctor questions"}
             </p>
           </div>
-          <Link to="/app/doctor-qgen" className="text-xs font-bold text-amber-300 hover:text-white underline pl-2">
-            View Sheet →
+          <Link to={isUserLoggedIn ? "/app/doctor-qgen" : "/start?tab=login"} className="text-xs font-bold text-amber-300 hover:text-white underline pl-2">
+            {isUserLoggedIn ? "View Sheet →" : "Try Free →"}
           </Link>
         </div>
       </Card>
@@ -523,6 +560,9 @@ function SafetySection() {
 }
 
 function FinalCTA() {
+  const { currentAccount } = useDemoData();
+  const navigate = useNavigate();
+
   return (
     <section className="py-24 lg:py-28 bg-grad-hero">
       <div className="max-w-4xl mx-auto px-6 text-center">
@@ -533,9 +573,36 @@ function FinalCTA() {
           <p className="text-plum-600 text-lg mb-9 max-w-xl mx-auto">
             Start your FemNura journey today and give yourself the same care you give everyone else.
           </p>
-          <Link to="/start">
-            <Button variant="primary" size="lg">Start Your Health Journey <ArrowRight size={18} /></Button>
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {currentAccount ? (
+              <button
+                type="button"
+                onClick={() => navigate("/app")}
+                className="px-8 py-4 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-base font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus-ring"
+              >
+                <span>Enter Your Dashboard</span>
+                <ArrowRight size={18} />
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate("/start?tab=signup")}
+                  className="px-8 py-4 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-base font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus-ring"
+                >
+                  <span>Start Your Health Journey</span>
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/start?tab=login")}
+                  className="px-6 py-4 rounded-xl border border-plum-200 bg-white hover:bg-lavender-50 text-plum-800 text-base font-bold shadow-2xs transition-all cursor-pointer focus-ring"
+                >
+                  <span>Log In</span>
+                </button>
+              </>
+            )}
+          </div>
         </FadeIn>
       </div>
     </section>
@@ -654,11 +721,28 @@ function SwitchAccountLandingModal({ isOpen, onClose }) {
 
           <div className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
             {/* Account list */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-plum-700 mb-2">
-                Available Profiles ({savedAccounts.length})
-              </label>
-              <div className="divide-y divide-plum-100 border border-plum-200 rounded-2xl overflow-hidden bg-white">
+            {!savedAccounts || savedAccounts.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-plum-700 font-medium mb-4">
+                  No accounts saved on this device.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    navigate("/start?tab=login");
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                >
+                  Log In or Create Account
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-plum-700 mb-2">
+                  Available Profiles ({savedAccounts.length})
+                </label>
+                <div className="divide-y divide-plum-100 border border-plum-200 rounded-2xl overflow-hidden bg-white">
                 {savedAccounts.map((acc) => {
                   const isSelected = lastLoginAccount?.id === acc.id;
                   const initial = (acc.name?.[0] || "U").toUpperCase();
@@ -721,6 +805,7 @@ function SwitchAccountLandingModal({ isOpen, onClose }) {
                 })}
               </div>
             </div>
+          )}
 
             {/* Add another profile */}
             {!showAddForm ? (
