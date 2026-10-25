@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import {
   ShieldAlert,
@@ -11,8 +11,12 @@ import {
   ArrowLeft,
   CheckCircle,
   Share2,
+  Printer,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
+import { useDemoData } from "../context/DemoDataContext.jsx";
 import {
   COUNTRY_CODES,
   formatPhoneNumberWithCode,
@@ -22,17 +26,27 @@ import {
 export default function EmergencyView() {
   const [params] = useSearchParams();
   const [contactCodes, setContactCodes] = useState({});
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState(() => new Date().toLocaleTimeString());
 
-  // Read data from URL parameters
+  // Connect directly to live active session context
+  const {
+    userName: ctxName,
+    currentAccount,
+    emergencyProfile: ctxProfile,
+    trustedContacts: ctxContacts,
+    refreshData,
+  } = useDemoData();
+
+  // Read data from URL parameters as fallback for scanned or shared links
   const uid = params.get("uid") || "";
-  const name = params.get("name") || params.get("user") || "Patient";
-  const bloodGroup = params.get("bg") || "O+";
-  const allergies = params.get("al") || "None known / declared";
-  const conditions = params.get("cd") || "None reported";
-  const emergencyNotes =
-    params.get("nt") || "Please contact my primary emergency contact immediately.";
+  const nameParam = params.get("name") || params.get("user") || "";
+  const bgParam = params.get("bg") || "";
+  const alParam = params.get("al") || "";
+  const cdParam = params.get("cd") || "";
+  const ntParam = params.get("nt") || "";
 
-  // Contacts
   const c1Name = params.get("c1n") || "";
   const c1Phone = params.get("c1p") || "";
   const c1Rel = params.get("c1r") || "Primary contact";
@@ -41,34 +55,105 @@ export default function EmergencyView() {
   const c2Phone = params.get("c2p") || "";
   const c2Rel = params.get("c2r") || "Secondary contact";
 
-  // If on the same device and user data exists in localStorage, pull latest state
-  let localData = null;
-  if (uid && typeof window !== "undefined") {
+  // State ticker to trigger instantaneous re-renders on window storage/focus events
+  const [storageTick, setStorageTick] = useState(0);
+
+  const handleManualRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    refreshData?.();
+    setStorageTick((t) => t + 1);
+    setLastSyncedTime(new Date().toLocaleTimeString());
+    setTimeout(() => setIsRefreshing(false), 500);
+  }, [refreshData]);
+
+  // Synchronize immediately if Care Circle is updated in another tab or in the same app session
+  useEffect(() => {
+    const handleStorageChange = () => {
+      refreshData?.();
+      setStorageTick((t) => t + 1);
+      setLastSyncedTime(new Date().toLocaleTimeString());
+    };
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("focus", handleStorageChange);
+    window.addEventListener("visibilitychange", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", handleStorageChange);
+      window.removeEventListener("visibilitychange", handleStorageChange);
+    };
+  }, [refreshData]);
+
+  // Direct localStorage retrieval as additional local backup
+  const localData = useMemo(() => {
+    if (typeof window === "undefined") return null;
     try {
-      const raw = localStorage.getItem(`femnura_userdata_v2_${uid}`);
-      if (raw) localData = JSON.parse(raw);
+      const targetId = uid || currentAccount?.id;
+      if (targetId) {
+        const raw = localStorage.getItem(`femnura_userdata_v2_${targetId}`);
+        if (raw) return JSON.parse(raw);
+      }
+      const lastAccRaw = localStorage.getItem("femnura_last_login_account_v2");
+      if (lastAccRaw) {
+        const lastAcc = JSON.parse(lastAccRaw);
+        if (lastAcc?.id) {
+          const raw = localStorage.getItem(`femnura_userdata_v2_${lastAcc.id}`);
+          if (raw) return JSON.parse(raw);
+        }
+      }
     } catch {}
-  }
+    return null;
+  }, [uid, currentAccount?.id, storageTick]);
 
-  const finalName = localData?.userName || name;
-  const finalBloodGroup = localData?.emergencyProfile?.bloodGroup || bloodGroup;
-  const finalAllergies = localData?.emergencyProfile?.allergies || allergies;
-  const finalConditions = localData?.emergencyProfile?.conditions || conditions;
-  const finalNotes = localData?.emergencyProfile?.emergencyNotes || emergencyNotes;
+  // Resolve final medical alert information with absolute priority to the live Care Circle data
+  const finalName =
+    ctxProfile?.patientName ||
+    ctxName ||
+    localData?.emergencyProfile?.patientName ||
+    localData?.userName ||
+    nameParam ||
+    "Patient";
 
-  const contactsList = [];
-  if (localData?.trustedContacts && localData.trustedContacts.length > 0) {
-    contactsList.push(...localData.trustedContacts);
-  } else {
+  const finalBloodGroup =
+    ctxProfile?.bloodGroup ||
+    localData?.emergencyProfile?.bloodGroup ||
+    bgParam ||
+    "O+";
+
+  const finalAllergies =
+    ctxProfile?.allergies ||
+    localData?.emergencyProfile?.allergies ||
+    alParam ||
+    "None declared";
+
+  const finalConditions =
+    ctxProfile?.conditions ||
+    localData?.emergencyProfile?.conditions ||
+    cdParam ||
+    "None declared";
+
+  const finalNotes =
+    ctxProfile?.emergencyNotes ||
+    localData?.emergencyProfile?.emergencyNotes ||
+    ntParam ||
+    "Please contact primary emergency contact immediately.";
+
+  // Contacts list synchronized directly from Care Circle
+  const contactsList = useMemo(() => {
+    if (ctxContacts && ctxContacts.length > 0) {
+      return ctxContacts;
+    }
+    if (localData?.trustedContacts && localData.trustedContacts.length > 0) {
+      return localData.trustedContacts;
+    }
+    const fallback = [];
     if (c1Name || c1Phone) {
-      contactsList.push({ name: c1Name || "Primary Contact", phone: c1Phone, relation: c1Rel });
+      fallback.push({ name: c1Name, phone: c1Phone, relation: c1Rel });
     }
     if (c2Name || c2Phone) {
-      contactsList.push({ name: c2Name || "Secondary Contact", phone: c2Phone, relation: c2Rel });
+      fallback.push({ name: c2Name, phone: c2Phone, relation: c2Rel });
     }
-  }
-
-  const [copiedLink, setCopiedLink] = useState(false);
+    return fallback;
+  }, [ctxContacts, localData?.trustedContacts, c1Name, c1Phone, c1Rel, c2Name, c2Phone, c2Rel]);
 
   const handleShare = () => {
     if (navigator.share) {
@@ -88,28 +173,139 @@ export default function EmergencyView() {
     }
   };
 
+  const handlePrint = () => {
+    const primaryC = contactsList[0] || { name: "Not assigned", phone: "", relation: "" };
+    const secondaryC = contactsList[1] || null;
+
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FemNura Emergency Medical ID - ${finalName}</title>
+    <style>
+      @page { size: auto; margin: 15mm; }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #2e1f2d; background: #fff; }
+      .card { max-width: 500px; border: 2px solid #5f3860; border-radius: 14px; padding: 24px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.08); margin: 0 auto; }
+      .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+      h2 { margin: 10px 0 4px 0; font-size: 22px; color: #421845; }
+      .row { margin: 9px 0; font-size: 13px; line-height: 1.4; }
+      .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+      .val { font-weight: 600; color: #1e1120; }
+      .notice { margin-top: 16px; padding: 10px 12px; background: #fdf2f8; border-left: 3px solid #db2777; border-radius: 6px; font-size: 11px; color: #831843; font-weight: 600; }
+      .footer { font-size: 10px; color: #888; margin-top: 16px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="badge">EMERGENCY MEDICAL ALERT</span>
+        <strong style="color:#5f3860; font-size:16px;">FemNura</strong>
+      </div>
+      <h2>${finalName}</h2>
+      <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:18px;">${finalBloodGroup}</span></div>
+      <div class="row"><span class="label">Known Medical Conditions:</span> <span class="val">${finalConditions}</span></div>
+      <div class="row"><span class="label">Known Allergies:</span> <span class="val">${finalAllergies}</span></div>
+      <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryC.name ? `${primaryC.name} (${primaryC.relation}) - ${primaryC.phone}` : "Not assigned"}</span></div>
+      ${secondaryC ? `<div class="row"><span class="label">Secondary Contact:</span> <span class="val">${secondaryC.name} (${secondaryC.relation}) - ${secondaryC.phone}</span></div>` : ""}
+      <div class="row"><span class="label">Emergency Instructions:</span> <span class="val">${finalNotes}</span></div>
+      
+      <div class="notice">
+        FIRST RESPONDERS: In an emergency, please notify the primary emergency contact immediately.
+      </div>
+      <div class="footer">FemNura — Your Health. Your Priority. Verified Medical Alert Profile</div>
+    </div>
+  </body>
+</html>`;
+
+    const existingIframe = document.getElementById("femnura-alert-print-frame");
+    if (existingIframe) existingIframe.remove();
+
+    const printFrame = document.createElement("iframe");
+    printFrame.id = "femnura-alert-print-frame";
+    printFrame.setAttribute(
+      "style",
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
+    );
+    document.body.appendChild(printFrame);
+
+    try {
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(html);
+      frameDoc.close();
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch {
+          window.print();
+        }
+      }, 350);
+    } catch {
+      window.print();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 py-8 px-4 sm:px-6">
       <div className="max-w-xl mx-auto">
         {/* Navigation & Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <Link
             to="/app/care-circle"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800/90 border border-slate-700 transition-colors w-fit"
           >
             <ArrowLeft size={14} /> Back to Care Circle
           </Link>
-          <button
-            onClick={handleShare}
-            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
-              copiedLink
-                ? "bg-emerald-950/80 border-emerald-500 text-emerald-300"
-                : "bg-rose-950/60 border-rose-800 text-rose-300 hover:text-white"
-            }`}
-          >
-            {copiedLink ? <CheckCircle size={13} className="text-emerald-400" /> : <Share2 size={13} />}
-            <span>{copiedLink ? "Link Copied!" : "Share Link"}</span>
-          </button>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="Sync with latest Care Circle edits"
+            >
+              <RefreshCw size={12} className={isRefreshing ? "animate-spin text-emerald-400" : "text-slate-400"} />
+              <span>{isRefreshing ? "Syncing..." : "Sync Care Circle"}</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-plum-700/80 bg-plum-950/70 text-plum-200 hover:text-white transition-colors cursor-pointer"
+              title="Print Emergency Alert Wallet Card"
+            >
+              <Printer size={13} /> Print Card
+            </button>
+
+            <button
+              onClick={handleShare}
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                copiedLink
+                  ? "bg-emerald-950/80 border-emerald-500 text-emerald-300"
+                  : "bg-rose-950/60 border-rose-800 text-rose-300 hover:text-white"
+              }`}
+            >
+              {copiedLink ? <CheckCircle size={13} className="text-emerald-400" /> : <Share2 size={13} />}
+              <span>{copiedLink ? "Link Copied!" : "Share Link"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Live Synchronized Status Pill */}
+        <div className="mb-4 flex items-center justify-between px-3 py-2 rounded-xl bg-slate-800/80 border border-emerald-500/40 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            </span>
+            <span className="font-semibold text-emerald-300">
+              Live Synchronized with Care Circle
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-400">
+            Last checked: {lastSyncedTime}
+          </span>
         </div>
 
         {/* Emergency Alert Banner */}

@@ -248,6 +248,29 @@ export function DemoDataProvider({ children }) {
     }
   }, [currentAccount, loadUserStorageIntoState]);
 
+  // Real-time synchronization across windows and tabs (e.g. Care Circle edits syncing to Emergency View)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (!currentAccount?.id) return;
+      if (
+        !e.key ||
+        e.key === `${USER_STORAGE_PREFIX}${currentAccount.id}` ||
+        e.key === SAVED_ACCOUNTS_KEY ||
+        e.key === LAST_LOGIN_KEY
+      ) {
+        loadUserStorageIntoState(currentAccount);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [currentAccount, loadUserStorageIntoState]);
+
+  const refreshData = useCallback(() => {
+    if (currentAccount) {
+      loadUserStorageIntoState(currentAccount);
+    }
+  }, [currentAccount, loadUserStorageIntoState]);
+
   // MUTATION METHODS: Save strictly and directly to the CURRENT USER'S isolated storage
   const addSymptom = (entry) => {
     if (!currentAccount?.id) return;
@@ -405,6 +428,46 @@ export function DemoDataProvider({ children }) {
     const userStorage = getUserStorage(currentAccount.id) || {};
     const updated = (userStorage.trustedContacts || []).filter((c) => c.id !== id);
     saveUserStorage(currentAccount.id, { ...userStorage, trustedContacts: updated, updatedAt: new Date().toISOString() });
+  };
+
+  const updateTrustedContact = (id, updatedFields) => {
+    if (!currentAccount?.id) return;
+    setTrustedContacts((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updatedFields } : c))
+    );
+
+    const userStorage = getUserStorage(currentAccount.id) || {};
+    const updated = (userStorage.trustedContacts || []).map((c) =>
+      c.id === id ? { ...c, ...updatedFields } : c
+    );
+    saveUserStorage(currentAccount.id, {
+      ...userStorage,
+      trustedContacts: updated,
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const updateAccountName = (newName) => {
+    if (!currentAccount?.id || !newName?.trim()) return;
+    const trimmed = newName.trim();
+    const updatedAccount = { ...currentAccount, name: trimmed };
+    setCurrentAccount(updatedAccount);
+    setSavedAccounts((prev) =>
+      prev.map((a) => (a.id === updatedAccount.id ? { ...a, name: trimmed } : a))
+    );
+    safeLocalStorageSet(LAST_LOGIN_KEY, updatedAccount);
+    const accounts = safeLocalStorageGet(SAVED_ACCOUNTS_KEY, []);
+    const updatedAccounts = accounts.map((a) =>
+      a.id === updatedAccount.id ? { ...a, name: trimmed } : a
+    );
+    safeLocalStorageSet(SAVED_ACCOUNTS_KEY, updatedAccounts);
+
+    const userStorage = getUserStorage(currentAccount.id) || {};
+    saveUserStorage(currentAccount.id, {
+      ...userStorage,
+      userName: trimmed,
+      updatedAt: new Date().toISOString(),
+    });
   };
 
   const updateSettings = (newSettings) => {
@@ -817,9 +880,12 @@ export function DemoDataProvider({ children }) {
     addDoctorSession,
     trustedContacts,
     addTrustedContact,
+    updateTrustedContact,
     removeTrustedContact,
     emergencyProfile,
     updateEmergencyProfile,
+    updateAccountName,
+    refreshData,
     userSettings,
     updateSettings,
     // Geolocation tracking
