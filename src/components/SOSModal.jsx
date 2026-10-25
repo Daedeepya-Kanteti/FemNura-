@@ -9,8 +9,6 @@ import {
   X,
   ShieldAlert,
   ExternalLink,
-  MessageSquare,
-  QrCode,
   Heart,
   ChevronRight,
   Navigation,
@@ -34,6 +32,11 @@ import {
   formatDistance,
   openNearestEmergencyCare,
 } from "../utils/location.js";
+import {
+  COUNTRY_CODES,
+  formatPhoneNumberWithCode,
+  getDialableNumber,
+} from "../utils/countryCodes.js";
 
 export default function SOSModal({ isOpen, onClose }) {
   const {
@@ -60,6 +63,13 @@ export default function SOSModal({ isOpen, onClose }) {
   const [searchStatus, setSearchStatus] = useState("");
   const [areaChangeToast, setAreaChangeToast] = useState("");
   const [isLocating, setIsLocating] = useState(false);
+  const [globalCountryCode, setGlobalCountryCode] = useState("+91");
+  const [contactCodes, setContactCodes] = useState({});
+
+  const getContactCode = (id) => contactCodes[id] || globalCountryCode;
+  const handleSetContactCode = (id, code) => {
+    setContactCodes((prev) => ({ ...prev, [id]: code }));
+  };
 
   // Directly select preset area and immediately recalculate distances
   const handleSelectArea = (preset) => {
@@ -104,21 +114,6 @@ export default function SOSModal({ isOpen, onClose }) {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     });
-  };
-
-  const sendEmergencySMS = (contact) => {
-    let locationSnippet = "";
-    if (userLocation) {
-      const typeLabel = userLocation.source === "gps" ? "live GPS location" : "current area location";
-      locationSnippet = ` My ${typeLabel}: https://maps.google.com/?q=${userLocation.latitude},${userLocation.longitude}${
-        userLocation.address ? ` (${userLocation.address})` : ""
-      }.`;
-    }
-
-    const text = encodeURIComponent(
-      `🚨 EMERGENCY SOS: Hi ${contact.name}, this is ${userName || "FemNura user"}. I am experiencing an urgent medical emergency and need immediate assistance!${locationSnippet} Please call me or send help right now.`
-    );
-    window.open(`sms:${contact.phone}?&body=${text}`, "_blank");
   };
 
   return (
@@ -495,19 +490,37 @@ export default function SOSModal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* Section 3: Care Circle & Emergency SMS with Live Location */}
+          {/* Section 3: Care Circle & Trusted Contacts */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <p className="text-xs font-bold uppercase tracking-wider text-plum-900 flex items-center gap-1.5">
                 <Users size={14} className="text-plum-600" /> Notify Trusted Contacts
               </p>
-              <Link
-                to="/app/care-circle"
-                onClick={onClose}
-                className="text-xs font-semibold text-rose-700 hover:text-rose-900 underline flex items-center gap-0.5"
-              >
-                Manage Contacts <ChevronRight size={12} />
-              </Link>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-plum-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-plum-500 uppercase tracking-wider">Country:</span>
+                  <select
+                    value={globalCountryCode}
+                    onChange={(e) => setGlobalCountryCode(e.target.value)}
+                    className="text-xs font-semibold text-plum-900 bg-transparent focus:outline-none cursor-pointer"
+                    title="Set country dialing code for all contacts"
+                    aria-label="Set country dialing code for all contacts"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.code} ({c.country})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Link
+                  to="/app/care-circle"
+                  onClick={onClose}
+                  className="text-xs font-semibold text-rose-700 hover:text-rose-900 underline flex items-center gap-0.5"
+                >
+                  Manage <ChevronRight size={12} />
+                </Link>
+              </div>
             </div>
 
             {trustedContacts.length === 0 ? (
@@ -523,45 +536,62 @@ export default function SOSModal({ isOpen, onClose }) {
               </div>
             ) : (
               <div className="space-y-2">
-                {trustedContacts.map((contact, idx) => (
-                  <div
-                    key={contact.id || idx}
-                    className="p-3 rounded-2xl bg-lavender-50/70 border border-plum-200 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs sm:text-sm font-bold text-plum-900 truncate">{contact.name}</p>
-                        <span className="text-[10px] bg-white text-plum-600 px-2 py-0.2 rounded-full border border-plum-200 shrink-0">
-                          {contact.relation}
-                        </span>
-                      </div>
-                      <p className="text-xs font-mono text-plum-600 mt-0.5">{contact.phone}</p>
-                      {userLocation && (
-                        <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
-                          <CheckCircle2 size={10} /> Pre-fills your live GPS link in SMS
-                        </span>
-                      )}
-                    </div>
+                {trustedContacts.map((contact, idx) => {
+                  const contactId = contact.id || idx;
+                  const code = getContactCode(contactId);
+                  const formattedPhone = formatPhoneNumberWithCode(contact.phone, code);
+                  const dialNum = getDialableNumber(contact.phone, code);
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <a
-                        href={`tel:${contact.phone}`}
-                        className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                        title="Call immediately"
-                      >
-                        <PhoneCall size={12} /> Call
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => sendEmergencySMS(contact)}
-                        className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-plum-800 border border-plum-300 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                        title="Send pre-filled emergency SMS with live GPS location"
-                      >
-                        <MessageSquare size={12} className="text-rose-600" /> SMS
-                      </button>
+                  return (
+                    <div
+                      key={contactId}
+                      className="p-3 rounded-2xl bg-lavender-50/70 border border-plum-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs sm:text-sm font-bold text-plum-900 truncate">{contact.name}</p>
+                          <span className="text-[10px] bg-white text-plum-600 px-2 py-0.2 rounded-full border border-plum-200 shrink-0">
+                            {contact.relation}
+                          </span>
+                        </div>
+
+                        {/* Country code dropdown near contact phone */}
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <div className="inline-flex items-center gap-1 bg-white border border-plum-300 rounded-lg px-2 py-0.5 shadow-2xs">
+                            <span className="text-[10px] font-bold text-plum-400 uppercase">Country:</span>
+                            <select
+                              value={code}
+                              onChange={(e) => handleSetContactCode(contactId, e.target.value)}
+                              className="text-xs font-mono font-bold text-plum-900 bg-transparent focus:outline-none cursor-pointer"
+                              title={`Select country code for ${contact.name}`}
+                              aria-label={`Select country code for ${contact.name}`}
+                            >
+                              {COUNTRY_CODES.map((c) => (
+                                <option key={c.code} value={c.code}>
+                                  {c.flag} {c.code}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <span className="text-xs font-mono font-bold text-plum-800 bg-white/80 px-2 py-0.5 rounded-md border border-plum-200/80">
+                            {formattedPhone}
+                          </span>
+                        </div>
+
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <a
+                          href={`tel:${dialNum}`}
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                          title={`Call ${contact.name} (${dialNum})`}
+                        >
+                          <PhoneCall size={13} /> Call
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -593,7 +623,7 @@ export default function SOSModal({ isOpen, onClose }) {
                 onClick={onClose}
                 className="text-rose-700 font-bold hover:underline shrink-0 flex items-center gap-1"
               >
-                <QrCode size={13} /> View QR Card
+                <ShieldAlert size={13} /> View Medical ID
               </Link>
             </div>
           </div>

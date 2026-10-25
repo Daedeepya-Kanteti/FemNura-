@@ -54,7 +54,7 @@ const SEED_DATA_FOR_DEFAULT = {
     },
   ],
   trustedContacts: [
-    { id: 701, name: "Deepya (Primary)", relation: "Self / Emergency Contact", phone: "+1 (555) 234-5678" },
+    { id: 701, name: "Deepya (Primary)", relation: "Self / Emergency Contact", phone: "+91 98480 22338" },
   ],
   emergencyProfile: {
     bloodGroup: "O+",
@@ -126,7 +126,7 @@ function createFreshUserStorage(account) {
     vaultFiles: [],
     doctorSessions: [],
     trustedContacts: account?.name
-      ? [{ id: Date.now() + 3, name: `${account.name} (Emergency)`, relation: "Self / Emergency", phone: "+1 (555) 012-3456" }]
+      ? [{ id: Date.now() + 3, name: `${account.name} (Emergency)`, relation: "Self / Emergency", phone: "+91 98480 12345" }]
       : [],
     emergencyProfile: {
       bloodGroup: "O+",

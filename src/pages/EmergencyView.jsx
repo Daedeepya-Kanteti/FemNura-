@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import {
   ShieldAlert,
@@ -13,11 +13,17 @@ import {
   Share2,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
+import {
+  COUNTRY_CODES,
+  formatPhoneNumberWithCode,
+  getDialableNumber,
+} from "../utils/countryCodes.js";
 
 export default function EmergencyView() {
   const [params] = useSearchParams();
+  const [contactCodes, setContactCodes] = useState({});
 
-  // Read data from URL parameters (available on any device scanning the QR code)
+  // Read data from URL parameters
   const uid = params.get("uid") || "";
   const name = params.get("name") || params.get("user") || "Patient";
   const bloodGroup = params.get("bg") || "O+";
@@ -187,27 +193,63 @@ export default function EmergencyView() {
             <p className="text-xs text-slate-400 italic">No emergency contacts configured yet.</p>
           ) : (
             <div className="space-y-3">
-              {contactsList.map((c, i) => (
-                <div
-                  key={i}
-                  className="bg-slate-900 rounded-xl p-4 border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div>
-                    <p className="text-base font-bold text-white">{c.name}</p>
-                    <p className="text-xs text-slate-400">{c.relation || "Emergency Contact"}</p>
+              {contactsList.map((c, i) => {
+                const code = contactCodes[i] || "+91";
+                const formattedPhone = formatPhoneNumberWithCode(c.phone, code);
+                const dialableNumber = getDialableNumber(c.phone, code);
+
+                return (
+                  <div
+                    key={i}
+                    className="bg-slate-900 rounded-xl p-4 border border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div>
+                      <p className="text-base font-bold text-white">{c.name}</p>
+                      <p className="text-xs text-slate-400">{c.relation || "Emergency Contact"}</p>
+
+                      {/* Small dropdown for country code near contact */}
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <div className="inline-flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-2 py-0.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Country:</span>
+                          <select
+                            value={code}
+                            onChange={(e) =>
+                              setContactCodes((prev) => ({ ...prev, [i]: e.target.value }))
+                            }
+                            className="text-xs font-mono font-bold text-emerald-400 bg-transparent focus:outline-none cursor-pointer"
+                            aria-label={`Select country calling code for ${c.name}`}
+                          >
+                            {COUNTRY_CODES.map((item) => (
+                              <option
+                                key={item.code}
+                                value={item.code}
+                                className="bg-slate-900 text-white"
+                              >
+                                {item.flag} {item.code}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
+                          {formattedPhone}
+                        </span>
+                      </div>
+                    </div>
+
+                    {c.phone ? (
+                      <a
+                        href={`tel:${dialableNumber}`}
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-colors cursor-pointer shrink-0 self-end sm:self-center"
+                        title={`Call ${c.name} (${dialableNumber})`}
+                      >
+                        <Phone size={16} /> Call {formattedPhone}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-500">No phone listed</span>
+                    )}
                   </div>
-                  {c.phone ? (
-                    <a
-                      href={`tel:${c.phone.replace(/\s+/g, "")}`}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-colors"
-                    >
-                      <Phone size={16} /> Call {c.phone}
-                    </a>
-                  ) : (
-                    <span className="text-xs text-slate-500">No phone listed</span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

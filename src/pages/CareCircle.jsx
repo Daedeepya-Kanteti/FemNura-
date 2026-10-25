@@ -1,25 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import QRCode from "qrcode";
 import {
   Users,
   Plus,
   Trash2,
-  QrCode,
   Phone,
   ShieldAlert,
   Printer,
   Edit2,
   Check,
   Heart,
-  AlertCircle,
-  ExternalLink,
   Eye,
+  CheckCircle2,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer, Badge } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import {
+  COUNTRY_CODES,
+  formatPhoneNumberWithCode,
+  getDialableNumber,
+} from "../utils/countryCodes.js";
 
 export default function CareCircle() {
   const {
@@ -33,11 +37,11 @@ export default function CareCircle() {
     updateEmergencyProfile,
   } = useDemoData();
 
-  const [qrDataUrl, setQrDataUrl] = useState("");
-
   const [name, setName] = useState("");
   const [relation, setRelation] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+91");
+  const [contactCodes, setContactCodes] = useState({});
 
   const [isEditingMedical, setIsEditingMedical] = useState(false);
   const [bloodGroup, setBloodGroup] = useState(emergencyProfile?.bloodGroup || "O+");
@@ -54,24 +58,15 @@ export default function CareCircle() {
     ? `${window.location.origin}/emergency?uid=${encodeURIComponent(currentAccount?.id || "default")}&name=${encodeURIComponent(userName || "Friend")}&bg=${encodeURIComponent(bloodGroup || "O+")}&al=${encodeURIComponent(allergies || "None")}&cd=${encodeURIComponent(conditions || "None")}&nt=${encodeURIComponent(emergencyNotes || "Call contact immediately.")}&c1n=${encodeURIComponent(primaryContact.name || "")}&c1p=${encodeURIComponent(primaryContact.phone || "")}&c1r=${encodeURIComponent(primaryContact.relation || "")}&c2n=${encodeURIComponent(secondaryContact.name || "")}&c2p=${encodeURIComponent(secondaryContact.phone || "")}&c2r=${encodeURIComponent(secondaryContact.relation || "")}`
     : "";
 
-  useEffect(() => {
-    if (!currentEmergencyUrl) return;
-    QRCode.toDataURL(currentEmergencyUrl, {
-      width: 280,
-      margin: 1,
-      color: {
-        dark: "#361638",
-        light: "#ffffff",
-      },
-    })
-      .then((url) => setQrDataUrl(url))
-      .catch((err) => console.error("Could not generate emergency QR:", err));
-  }, [currentEmergencyUrl]);
-
   const submitContact = (e) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
-    addTrustedContact({ name: name.trim(), relation: relation.trim() || "Trusted contact", phone: phone.trim() });
+    const formatted = formatPhoneNumberWithCode(phone.trim(), countryCode);
+    addTrustedContact({
+      name: name.trim(),
+      relation: relation.trim() || "Trusted contact",
+      phone: formatted,
+    });
     setName("");
     setRelation("");
     setPhone("");
@@ -102,16 +97,14 @@ export default function CareCircle() {
           <title>FemNura Emergency Medical Wallet Card - ${userName || "Patient"}</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #2e1f2d; background: #fafafa; }
-            .card { width: 360px; border: 2px solid #5f3860; border-radius: 14px; padding: 20px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.1); margin: 0 auto; }
+            .card { width: 380px; border: 2px solid #5f3860; border-radius: 14px; padding: 22px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.1); margin: 0 auto; }
             .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
             h2 { margin: 10px 0 4px 0; font-size: 20px; color: #421845; }
-            .row { margin: 7px 0; font-size: 13px; line-height: 1.4; }
-            .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; }
+            .row { margin: 8px 0; font-size: 13px; line-height: 1.4; }
+            .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
             .val { font-weight: 600; color: #1e1120; }
-            .qr-section { margin-top: 14px; text-align: center; border-top: 1px dashed #d1c4d4; padding-top: 12px; }
-            .qr-img { width: 130px; height: 130px; border-radius: 8px; border: 1px solid #ddd; }
-            .qr-instruction { font-size: 11px; color: #666; margin-top: 6px; font-weight: 500; }
-            .footer { font-size: 10px; color: #888; margin-top: 12px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
+            .notice { margin-top: 16px; padding: 10px 12px; background: #fdf2f8; border-left: 3px solid #db2777; border-radius: 6px; font-size: 11px; color: #831843; font-weight: 600; }
+            .footer { font-size: 10px; color: #888; margin-top: 14px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
           </style>
         </head>
         <body>
@@ -121,15 +114,15 @@ export default function CareCircle() {
               <strong style="color:#5f3860; font-size:15px; letter-spacing:0.5px;">FemNura</strong>
             </div>
             <h2>${userName || "Patient"}</h2>
-            <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:15px;">${bloodGroup}</span></div>
+            <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:16px;">${bloodGroup}</span></div>
             <div class="row"><span class="label">Known Conditions:</span> <span class="val">${conditions || "None declared"}</span></div>
             <div class="row"><span class="label">Allergies:</span> <span class="val">${allergies || "None declared"}</span></div>
             <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryContact.name ? `${primaryContact.name} (${primaryContact.relation}) - ${primaryContact.phone}` : "Not assigned"}</span></div>
+            ${secondaryContact.name ? `<div class="row"><span class="label">Secondary Contact:</span> <span class="val">${secondaryContact.name} (${secondaryContact.relation}) - ${secondaryContact.phone}</span></div>` : ""}
             <div class="row"><span class="label">Emergency Note:</span> <span class="val">${emergencyNotes || "Call primary contact immediately."}</span></div>
             
-            <div class="qr-section">
-              ${qrDataUrl ? `<img src="${qrDataUrl}" class="qr-img" alt="Scannable Emergency QR" />` : ""}
-              <div class="qr-instruction">Scan with any phone camera to view full emergency profile & 1-click call contact</div>
+            <div class="notice">
+              FIRST RESPONDERS: In an emergency, please contact the primary emergency contact above immediately.
             </div>
             <div class="footer">Fold and carry in wallet or purse. FemNura — Your Health. Your Priority.</div>
           </div>
@@ -245,24 +238,27 @@ export default function CareCircle() {
             </div>
 
             <div>
-              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-plum-200/80 mb-3 shadow-2xs text-center">
-                {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt={`Emergency QR Code for ${userName}`}
-                    className="w-36 h-36 rounded-xl border border-plum-100 shadow-2xs"
-                  />
-                ) : (
-                  <div className="w-36 h-36 bg-lavender-50 rounded-xl flex items-center justify-center text-xs text-plum-400">
-                    Generating QR...
+              <div className="p-4 bg-white rounded-2xl border border-plum-200/80 mb-3 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-plum-950 flex items-center gap-1.5">
+                    <ShieldCheck size={15} className="text-emerald-600" />
+                    First Responder Profile
+                  </span>
+                  <span className="text-[10px] text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full font-extrabold flex items-center gap-1">
+                    <CheckCircle2 size={10} className="text-emerald-600" />
+                    Verified Local ID
+                  </span>
+                </div>
+                <p className="text-[11px] text-plum-600 leading-relaxed">
+                  Your vital emergency data is instantly accessible for triage personnel, doctors, and loved ones in urgent situations.
+                </p>
+                {primaryContact.name && (
+                  <div className="pt-2 border-t border-plum-100 text-xs">
+                    <span className="text-[10px] font-bold text-plum-400 uppercase block">Primary Contact</span>
+                    <span className="font-semibold text-plum-900">{primaryContact.name} ({primaryContact.relation})</span>
+                    <span className="font-mono text-plum-700 block text-[11px] mt-0.5">{primaryContact.phone}</span>
                   </div>
                 )}
-                <p className="text-[11px] font-bold text-plum-700 mt-2 flex items-center gap-1">
-                  <QrCode size={13} className="text-rose-500" /> Scannable First Responder QR
-                </p>
-                <p className="text-[10px] text-plum-400 mt-0.5">
-                  Unique to {userName}'s account & medical profile
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -276,7 +272,7 @@ export default function CareCircle() {
                     size="sm"
                     className="w-full justify-center text-xs font-semibold gap-1.5 border-plum-200 hover:border-plum-400 text-plum-800"
                   >
-                    <Eye size={14} className="text-plum-600" /> Preview Emergency Scan View
+                    <Eye size={14} className="text-plum-600" /> View Medical Alert Card
                   </Button>
                 </Link>
 
@@ -286,7 +282,7 @@ export default function CareCircle() {
                   onClick={handlePrintCard}
                   className="w-full justify-center text-xs font-semibold gap-1.5 bg-plum-800 hover:bg-plum-900"
                 >
-                  <Printer size={14} /> Print Wallet Card (with QR)
+                  <Printer size={14} /> Print Wallet Emergency Card
                 </Button>
               </div>
             </div>
@@ -314,13 +310,28 @@ export default function CareCircle() {
                 placeholder="Relationship (e.g. Sister, Partner)"
                 className="rounded-xl border border-plum-200 px-4 py-2.5 text-sm focus-ring bg-ivory/60"
               />
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone number *"
-                required
-                className="rounded-xl border border-plum-200 px-4 py-2.5 text-sm focus-ring bg-ivory/60"
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="rounded-xl border border-plum-200 px-2 py-2.5 text-xs font-mono font-bold focus-ring bg-ivory/60 text-plum-900 cursor-pointer shrink-0"
+                  title="Select Country Calling Code"
+                  aria-label="Country Calling Code"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone number *"
+                  required
+                  className="w-full rounded-xl border border-plum-200 px-4 py-2.5 text-sm focus-ring bg-ivory/60"
+                />
+              </div>
               <Button
                 type="submit"
                 variant="primary"
@@ -346,49 +357,74 @@ export default function CareCircle() {
               />
             ) : (
               <div className="space-y-3">
-                {trustedContacts.map((c, i) => (
-                  <motion.div
-                    key={c.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="flex items-center justify-between p-4 rounded-2xl border border-plum-100 hover:border-plum-300 transition-colors bg-white shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-11 h-11 rounded-full bg-lavender-100 text-plum-800 font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
-                        {(c.name[0] || "C").toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-plum-900 text-sm truncate">{c.name}</p>
-                          {i === 0 && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider bg-sage-100 text-sage-800 px-2 py-0.5 rounded-full">
-                              Primary
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-plum-500 flex items-center gap-2 mt-0.5">
-                          <span className="font-medium text-plum-600">{c.relation}</span>
-                          <span>•</span>
-                          <a
-                            href={`tel:${c.phone}`}
-                            className="text-plum-700 hover:text-plum-950 underline flex items-center gap-1 font-semibold"
-                          >
-                            <Phone size={11} /> {c.phone}
-                          </a>
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeTrustedContact(c.id)}
-                      title="Remove contact"
-                      className="p-2 text-plum-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring"
+                {trustedContacts.map((c, i) => {
+                  const code = contactCodes[c.id] || "+91";
+                  const formattedPhone = formatPhoneNumberWithCode(c.phone, code);
+                  const dialNum = getDialableNumber(c.phone, code);
+
+                  return (
+                    <motion.div
+                      key={c.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-plum-100 hover:border-plum-300 transition-colors bg-white shadow-2xs gap-3"
                     >
-                      <Trash2 size={16} />
-                    </button>
-                  </motion.div>
-                ))}
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="w-11 h-11 rounded-full bg-lavender-100 text-plum-800 font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+                          {(c.name[0] || "C").toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-plum-900 text-sm truncate">{c.name}</p>
+                            {i === 0 && (
+                              <span className="text-[10px] font-bold uppercase tracking-wider bg-sage-100 text-sage-800 px-2 py-0.5 rounded-full">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs font-medium text-plum-600">{c.relation}</span>
+                            <span className="text-plum-300">•</span>
+                            {/* Country code dropdown near contact */}
+                            <div className="inline-flex items-center gap-1 bg-lavender-50 border border-plum-200 rounded-lg px-2 py-0.5 shadow-2xs">
+                              <span className="text-[10px] font-bold text-plum-400 uppercase">Country:</span>
+                              <select
+                                value={code}
+                                onChange={(e) =>
+                                  setContactCodes((prev) => ({ ...prev, [c.id]: e.target.value }))
+                                }
+                                className="text-xs font-mono font-bold text-plum-900 bg-transparent focus:outline-none cursor-pointer"
+                                title="Country Calling Code"
+                              >
+                                {COUNTRY_CODES.map((item) => (
+                                  <option key={item.code} value={item.code}>
+                                    {item.flag} {item.code}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <a
+                              href={`tel:${dialNum}`}
+                              className="text-xs text-plum-700 hover:text-plum-950 underline flex items-center gap-1 font-semibold font-mono"
+                              title={`Call ${c.name} (${dialNum})`}
+                            >
+                              <Phone size={11} /> {formattedPhone}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeTrustedContact(c.id)}
+                        title="Remove contact"
+                        className="p-2 text-plum-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors focus-ring self-end sm:self-center"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </Card>

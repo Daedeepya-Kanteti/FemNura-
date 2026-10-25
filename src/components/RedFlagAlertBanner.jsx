@@ -10,7 +10,6 @@ import {
   ChevronRight,
   ShieldAlert,
   ExternalLink,
-  MessageSquare,
   Navigation,
 } from "lucide-react";
 import { useDemoData } from "../context/DemoDataContext.jsx";
@@ -20,6 +19,11 @@ import {
   getNearestHospital,
   formatDistance,
 } from "../utils/location.js";
+import {
+  COUNTRY_CODES,
+  formatPhoneNumberWithCode,
+  getDialableNumber,
+} from "../utils/countryCodes.js";
 
 export default function RedFlagAlertBanner({
   flag, // { title, concern, id }
@@ -38,7 +42,14 @@ export default function RedFlagAlertBanner({
   const [isLocating, setIsLocating] = useState(false);
   const [showAreaPicker, setShowAreaPicker] = useState(false);
   const [areaNotice, setAreaNotice] = useState("");
+  const [globalCountryCode, setGlobalCountryCode] = useState("+91");
+  const [contactCodes, setContactCodes] = useState({});
   const primaryContact = trustedContacts[0] || null;
+
+  const getContactCode = (id) => contactCodes[id] || globalCountryCode;
+  const handleSetContactCode = (id, code) => {
+    setContactCodes((prev) => ({ ...prev, [id]: code }));
+  };
 
   const nearestHospital = useMemo(() => {
     return getNearestHospital(userLocation);
@@ -49,13 +60,6 @@ export default function RedFlagAlertBanner({
   };
 
   if (!flag) return null;
-
-  const handleNotifyContact = (contact) => {
-    const text = encodeURIComponent(
-      `URGENT HEALTH ALERT: Hi ${contact.name}, this is ${userName || "FemNura user"}. I am experiencing acute symptoms (${flag.title}) and may need emergency medical assistance. Please check on me or call me immediately.`
-    );
-    window.open(`sms:${contact.phone}?&body=${text}`, "_blank");
-  };
 
   return (
     <>
@@ -324,42 +328,60 @@ export default function RedFlagAlertBanner({
                     </Link>
                   </div>
                 ) : (
-                  trustedContacts.map((contact, idx) => (
-                    <div
-                      key={contact.id || idx}
-                      className="p-3.5 rounded-2xl bg-lavender-50/60 border border-plum-200 flex items-center justify-between gap-3"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-plum-900 text-sm">{contact.name}</p>
-                          <span className="text-[10px] font-semibold bg-white text-plum-600 px-2 py-0.5 rounded-full border border-plum-200">
-                            {contact.relation}
-                          </span>
-                        </div>
-                        <p className="text-xs font-mono font-medium text-plum-600 mt-0.5">
-                          {contact.phone}
-                        </p>
-                      </div>
+                  trustedContacts.map((contact, idx) => {
+                    const contactId = contact.id || idx;
+                    const code = getContactCode(contactId);
+                    const formattedPhone = formatPhoneNumberWithCode(contact.phone, code);
+                    const dialNum = getDialableNumber(contact.phone, code);
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <a
-                          href={`tel:${contact.phone}`}
-                          className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
-                          title="Call immediately"
-                        >
-                          <PhoneCall size={12} /> Call
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleNotifyContact(contact)}
-                          className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-plum-800 border border-plum-300 text-xs font-bold flex items-center gap-1 cursor-pointer"
-                          title="Send pre-filled emergency SMS"
-                        >
-                          <MessageSquare size={12} className="text-rose-600" /> SMS
-                        </button>
+                    return (
+                      <div
+                        key={contactId}
+                        className="p-3.5 rounded-2xl bg-lavender-50/60 border border-plum-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-plum-900 text-sm">{contact.name}</p>
+                            <span className="text-[10px] font-semibold bg-white text-plum-600 px-2 py-0.5 rounded-full border border-plum-200">
+                              {contact.relation}
+                            </span>
+                          </div>
+
+                          {/* Country code selector near contact */}
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <div className="inline-flex items-center gap-1 bg-white border border-plum-300 rounded-lg px-2 py-0.5 shadow-2xs">
+                              <span className="text-[10px] font-bold text-plum-400 uppercase">Country:</span>
+                              <select
+                                value={code}
+                                onChange={(e) => handleSetContactCode(contactId, e.target.value)}
+                                className="text-xs font-mono font-bold text-plum-900 bg-transparent focus:outline-none cursor-pointer"
+                                title={`Select country code for ${contact.name}`}
+                              >
+                                {COUNTRY_CODES.map((c) => (
+                                  <option key={c.code} value={c.code}>
+                                    {c.flag} {c.code}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-plum-800 bg-white/80 px-2 py-0.5 rounded-md border border-plum-200/80">
+                              {formattedPhone}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          <a
+                            href={`tel:${dialNum}`}
+                            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition-colors"
+                            title={`Call ${contact.name} (${dialNum})`}
+                          >
+                            <PhoneCall size={13} /> Call Now
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
 
                 <div className="pt-2 border-t border-plum-100 flex items-center justify-between">
@@ -368,7 +390,7 @@ export default function RedFlagAlertBanner({
                     onClick={() => setShowContactModal(false)}
                     className="text-xs font-semibold text-plum-600 hover:text-plum-900 flex items-center gap-1"
                   >
-                    Open Care Circle & Emergency QR <ChevronRight size={13} />
+                    Open Care Circle & Medical ID <ChevronRight size={13} />
                   </Link>
                   <button
                     type="button"
