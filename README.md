@@ -7,14 +7,14 @@
 
 ---
 
-## 🔗 Official Published Website Link for Judges
+## 🔗 Official Published Website Link 
 
 > **Click below to access and test the live published application:**  
 > ### 🌐 **[https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app](https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app)**
 
 ---
 
-## ⚡ Quick Start & Evaluation Guide for Judges
+## ⚡ Quick Start & Guide 
 
 FemNura features a privacy-preserving authentication and isolated multi-profile data architecture. To evaluate the application, you can choose either flow:
 
