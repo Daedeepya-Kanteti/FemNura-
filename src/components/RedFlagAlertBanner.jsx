@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,7 +14,12 @@ import {
   Navigation,
 } from "lucide-react";
 import { useDemoData } from "../context/DemoDataContext.jsx";
-import { openNearestEmergencyCare } from "../utils/location.js";
+import {
+  openNearestEmergencyCare,
+  getDirectionsUrl,
+  getNearestHospital,
+  formatDistance,
+} from "../utils/location.js";
 
 export default function RedFlagAlertBanner({
   flag, // { title, concern, id }
@@ -34,6 +39,10 @@ export default function RedFlagAlertBanner({
   const [showAreaPicker, setShowAreaPicker] = useState(false);
   const [areaNotice, setAreaNotice] = useState("");
   const primaryContact = trustedContacts[0] || null;
+
+  const nearestHospital = useMemo(() => {
+    return getNearestHospital(userLocation);
+  }, [userLocation]);
 
   const handleFindNearestEmergencyCare = () => {
     openNearestEmergencyCare(userLocation, setIsLocating);
@@ -193,6 +202,21 @@ export default function RedFlagAlertBanner({
                   <ExternalLink size={14} className="text-rose-200 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
+                {/* Direct Turn-by-Turn Route to Closest Hospital starting from selected area */}
+                {nearestHospital && (
+                  <a
+                    href={getDirectionsUrl(nearestHospital.lat, nearestHospital.lng, nearestHospital.name, userLocation)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold bg-plum-900 hover:bg-plum-950 text-white shadow-md transition-all cursor-pointer group shrink-0"
+                    title={`Get direct driving route from ${userLocation?.city || userLocation?.address || "selected area"} to ${nearestHospital.name}`}
+                  >
+                    <Navigation size={13} className="text-emerald-300" />
+                    <span>Route to {nearestHospital.name.split(" ")[0]} ({formatDistance(nearestHospital.distanceKm)})</span>
+                    <ExternalLink size={12} className="text-plum-300 group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                )}
+
                 {/* Quick-Dial Emergency Hotlines (108 / 112 / 181) as Fallbacks */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <a
@@ -244,7 +268,7 @@ export default function RedFlagAlertBanner({
               <p className="text-[11px] text-plum-600 flex items-center gap-1.5 font-medium">
                 <Navigation size={12} className="text-rose-500 shrink-0" />
                 <span>
-                  📍 Centered on {userLocation?.city || userLocation?.address || "Selected Area"} • Opens Google Maps routing (No API key needed)
+                  📍 Route Origin: <strong className="text-plum-900">{userLocation?.city || userLocation?.address || "Selected Area"}</strong> • Directions route starts directly from this chosen area.
                 </span>
               </p>
             </div>

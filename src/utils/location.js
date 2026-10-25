@@ -426,12 +426,62 @@ export function getSortedHealthCenters(userLat, userLng, filterType = "All") {
     });
 }
 
-// Generate Google Maps navigation URL
-export function getDirectionsUrl(lat, lng, name) {
-  if (lat == null || lng == null) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name || "emergency hospital")}`;
+// Generate Google Maps navigation URL with route starting from active/selected area
+export function getDirectionsUrl(lat, lng, name, originLocation) {
+  let originParam = "";
+
+  if (originLocation) {
+    if (typeof originLocation === "string" && originLocation.trim()) {
+      originParam = `&origin=${encodeURIComponent(originLocation.trim())}`;
+    } else if (typeof originLocation === "object") {
+      const oLat = originLocation.latitude ?? originLocation.lat;
+      const oLng = originLocation.longitude ?? originLocation.lng;
+      if (
+        oLat != null &&
+        oLng != null &&
+        !isNaN(Number(oLat)) &&
+        !isNaN(Number(oLng))
+      ) {
+        originParam = `&origin=${Number(oLat)},${Number(oLng)}`;
+      } else if (originLocation.address && typeof originLocation.address === "string" && originLocation.address.trim()) {
+        originParam = `&origin=${encodeURIComponent(originLocation.address.trim())}`;
+      } else if (originLocation.name && typeof originLocation.name === "string" && originLocation.name.trim()) {
+        originParam = `&origin=${encodeURIComponent(originLocation.name.trim())}`;
+      } else if (originLocation.city && typeof originLocation.city === "string" && originLocation.city.trim()) {
+        originParam = `&origin=${encodeURIComponent(originLocation.city.trim())}`;
+      }
+    }
   }
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+  const hasDestCoords =
+    lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng));
+
+  const destination = hasDestCoords
+    ? `${Number(lat)},${Number(lng)}`
+    : encodeURIComponent(name || "emergency hospital");
+
+  // If we have destination coordinates or an origin, open Google Maps directions router
+  if (hasDestCoords || originParam) {
+    return `https://www.google.com/maps/dir/?api=1${originParam}&destination=${destination}`;
+  }
+
+  // Fallback to query search if neither coords nor origin are known
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name || "emergency hospital")}`;
+}
+
+// Get closest emergency hospital relative to user location
+export function getNearestHospital(userLocation, filterType = "All") {
+  const lat = userLocation?.latitude ?? userLocation?.lat;
+  const lng = userLocation?.longitude ?? userLocation?.lng;
+  const sorted = getSortedHealthCenters(lat, lng, filterType);
+  return sorted[0] || null;
+}
+
+// Get direct directions URL to closest emergency hospital with origin from user location
+export function getNearestHospitalDirectionsUrl(userLocation, filterType = "All") {
+  const nearest = getNearestHospital(userLocation, filterType);
+  if (!nearest) return null;
+  return getDirectionsUrl(nearest.lat, nearest.lng, nearest.name, userLocation);
 }
 
 // Popular regional city & district presets

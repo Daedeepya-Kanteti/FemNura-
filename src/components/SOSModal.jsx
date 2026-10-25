@@ -381,10 +381,10 @@ export default function SOSModal({ isOpen, onClose }) {
               </div>
 
               {/* Informative Status Label */}
-              <p className="text-[10px] text-plum-500 mt-2 pt-2 border-t border-rose-100 flex items-center gap-1.5 font-medium">
+              <p className="text-[10px] text-plum-600 mt-2 pt-2 border-t border-rose-100 flex items-center gap-1.5 font-medium">
                 <Navigation size={11} className="text-rose-600 shrink-0" />
                 <span>
-                  📍 Centered on {userLocation?.city || userLocation?.address || "Selected Area"} ({userLocation?.latitude?.toFixed(3)}°N, {userLocation?.longitude?.toFixed(3)}°E) • Instant Google Maps routing (No API key needed)
+                  📍 Route Origin: <strong className="text-plum-900">{userLocation?.city || userLocation?.address || "Selected Area"}</strong> ({userLocation?.latitude?.toFixed(3)}°N, {userLocation?.longitude?.toFixed(3)}°E) • All hospital directions start from here!
                 </span>
               </p>
             </div>
@@ -480,10 +480,11 @@ export default function SOSModal({ isOpen, onClose }) {
                     </div>
 
                     <a
-                      href={getDirectionsUrl(hc.lat, hc.lng, hc.name)}
+                      href={getDirectionsUrl(hc.lat, hc.lng, hc.name, userLocation)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-2.5 py-1 rounded-xl bg-plum-800 hover:bg-plum-900 text-white font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                      title={`Get route from ${userLocation?.city || userLocation?.address || "your selected area"} to ${hc.name}`}
                     >
                       <Navigation size={12} />
                       <span>Directions</span>
