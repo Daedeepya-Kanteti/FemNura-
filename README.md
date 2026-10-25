@@ -250,7 +250,7 @@ npm run build
 ## 🌐 Deployment Information
 
 - **Published Web Application URL:**  
-  [https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app](https://ais-pre-pvnlwmbt6ajezw5xelb4ru-983671979486.asia-southeast1.run.app)
+ https://femnura.ai.studio
 - **Primary Demo Account:** `example@gmail.com` *(Password optional)*
 
 ---
