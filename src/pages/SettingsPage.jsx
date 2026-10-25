@@ -18,6 +18,9 @@ export default function SettingsPage() {
     doctorSessions,
     trustedContacts,
     emergencyProfile,
+    userLocation,
+    isLocationEnabled,
+    toggleLocationTracking,
   } = useDemoData();
 
   const notif = userSettings?.notifications ?? true;
@@ -367,7 +370,23 @@ export default function SettingsPage() {
             checked={dataSharing}
             onChange={() => setDataSharing((v) => !v)}
           />
+          <Row
+            title="Emergency GPS location tracking"
+            desc="Opt-in only. Calculates exact distances to nearby hospital emergency rooms in the SOS protocol and includes your live coordinates in emergency alerts."
+            checked={isLocationEnabled}
+            onChange={() => toggleLocationTracking(!isLocationEnabled)}
+          />
         </div>
+        {isLocationEnabled && userLocation && (
+          <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
+            <span>
+              📍 Active on-device GPS lock: <strong>{userLocation.address || `${userLocation.latitude.toFixed(4)}°, ${userLocation.longitude.toFixed(4)}°`}</strong>
+            </span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+              ±{userLocation.accuracy}m
+            </span>
+          </div>
+        )}
       </Card>
 
       <Card className="p-6 sm:p-7 mb-6">

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { reverseGeocodeCoords } from "../utils/location.js";
 
 const DemoDataContext = createContext(null);
 
@@ -58,6 +59,7 @@ const SEED_DATA_FOR_DEFAULT = {
     notifications: true,
     dataSharing: false,
     language: "English",
+    locationTracking: false,
   },
 };
 
@@ -129,6 +131,7 @@ function createFreshUserStorage(account) {
       notifications: true,
       dataSharing: false,
       language: "English",
+      locationTracking: false,
     },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -178,7 +181,12 @@ export function DemoDataProvider({ children }) {
     conditions: "None reported",
     emergencyNotes: "Please contact primary emergency contact immediately.",
   });
-  const [userSettings, setUserSettings] = useState({ notifications: true, dataSharing: false, language: "English" });
+  const [userSettings, setUserSettings] = useState({
+    notifications: true,
+    dataSharing: false,
+    language: "English",
+    locationTracking: false,
+  });
 
   // Function to load a specific user's isolated storage into state
   const loadUserStorageIntoState = useCallback((account) => {
@@ -203,7 +211,14 @@ export function DemoDataProvider({ children }) {
       conditions: "None reported",
       emergencyNotes: "Please contact primary emergency contact immediately.",
     });
-    setUserSettings(data.settings || { notifications: true, dataSharing: false, language: "English" });
+    setUserSettings(
+      data.settings || {
+        notifications: true,
+        dataSharing: false,
+        language: "English",
+        locationTracking: false,
+      }
+    );
   }, []);
 
   // Initial load on mount
@@ -392,6 +407,88 @@ export function DemoDataProvider({ children }) {
     });
   };
 
+  // Real-time Geolocation tracking with user opt-in control
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+
+  const fetchCurrentLocation = useCallback((onSuccess, onError) => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      const err = "Geolocation is not supported by your browser";
+      setLocationError(err);
+      onError?.(err);
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        let address = "Detecting neighborhood...";
+        try {
+          address = await reverseGeocodeCoords(latitude, longitude);
+        } catch (e) {
+          address = `Coordinates: ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+        }
+
+        const loc = {
+          latitude,
+          longitude,
+          accuracy: Math.round(accuracy),
+          address,
+          timestamp: new Date().toISOString(),
+        };
+
+        setUserLocation(loc);
+        setLocationLoading(false);
+        setLocationError(null);
+        onSuccess?.(loc);
+      },
+      (err) => {
+        let msg = "Could not retrieve GPS coordinates.";
+        if (err.code === 1) msg = "Location permission denied in browser.";
+        else if (err.code === 2) msg = "GPS position unavailable. Please check device location settings.";
+        else if (err.code === 3) msg = "Location request timed out. Please try again.";
+
+        setLocationError(msg);
+        setLocationLoading(false);
+        onError?.(msg);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  }, []);
+
+  const toggleLocationTracking = useCallback(
+    (enable) => {
+      if (enable) {
+        updateSettings({ locationTracking: true });
+        fetchCurrentLocation();
+      } else {
+        updateSettings({ locationTracking: false });
+        setUserLocation(null);
+        setLocationError(null);
+      }
+    },
+    [fetchCurrentLocation]
+  );
+
+  const refreshLocation = useCallback(() => {
+    fetchCurrentLocation();
+  }, [fetchCurrentLocation]);
+
+  // If user previously enabled location tracking in settings, refresh when account loads
+  useEffect(() => {
+    if (userSettings?.locationTracking && !userLocation && !locationLoading) {
+      fetchCurrentLocation();
+    }
+  }, [userSettings?.locationTracking]);
+
   // Google-Style Login with Account Selection
   const loginWithAccount = (account) => {
     if (!account) return;
@@ -545,6 +642,13 @@ export function DemoDataProvider({ children }) {
     updateEmergencyProfile,
     userSettings,
     updateSettings,
+    // Geolocation tracking
+    userLocation,
+    isLocationEnabled: Boolean(userSettings?.locationTracking),
+    locationLoading,
+    locationError,
+    toggleLocationTracking,
+    refreshLocation,
   };
 
   return <DemoDataContext.Provider value={value}>{children}</DemoDataContext.Provider>;
