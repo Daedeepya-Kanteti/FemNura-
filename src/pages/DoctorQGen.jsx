@@ -13,12 +13,14 @@ import {
   Clock,
   Plus,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer, Badge } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 import { detectRedFlags } from "../utils/redFlags.js";
 import RedFlagAlertBanner from "../components/RedFlagAlertBanner.jsx";
+import { printHtmlDirect, downloadPrintableHtmlFile } from "../utils/printHelper.js";
 
 export default function DoctorQGen() {
   const { userName, symptoms, moods, cycleEntries, doctorSessions, addDoctorSession } = useDemoData();
@@ -71,10 +73,12 @@ export default function DoctorQGen() {
     });
   };
 
-  const handlePrint = (sessionToPrint) => {
+  const buildPrintHtml = (sessionToPrint) => {
     const questions = sessionToPrint?.questions || result?.questions || [];
+    const targetDoctor = sessionToPrint?.doctorName || doctorName;
+    const targetCustomNote = sessionToPrint?.customNote || customNote;
 
-    const htmlContent = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -89,7 +93,7 @@ export default function DoctorQGen() {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #2e1f2d; margin: 0; padding: 24px; line-height: 1.6; font-size: 13px; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #2e1f2d; margin: 0; padding: 24px; line-height: 1.6; font-size: 13px; background: #ffffff; }
       .header { border-bottom: 2px solid #5f3860; padding-bottom: 16px; margin-bottom: 20px; }
       .logo { font-size: 24px; font-weight: bold; color: #5f3860; }
       .tagline { font-size: 11px; color: #7a5689; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
@@ -109,7 +113,7 @@ export default function DoctorQGen() {
       <div class="meta">
         <strong>Patient:</strong> ${userName || "Patient"} &nbsp;|&nbsp; 
         <strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
-        ${doctorName ? `&nbsp;|&nbsp; <strong>Prepared for:</strong> Dr. ${doctorName}` : ""}
+        ${targetDoctor ? `&nbsp;|&nbsp; <strong>Prepared for:</strong> Dr. ${targetDoctor}` : ""}
       </div>
     </div>
 
@@ -121,11 +125,11 @@ export default function DoctorQGen() {
     </div>
 
     ${
-      customNote
+      targetCustomNote
         ? `
       <div class="section">
         <h2>Patient's Personal Notes / Specific Concerns</h2>
-        <div class="box">${customNote}</div>
+        <div class="box">${targetCustomNote}</div>
       </div>
     `
         : ""
@@ -160,51 +164,16 @@ export default function DoctorQGen() {
     </div>
   </body>
 </html>`;
+  };
 
-    const existingIframe = document.getElementById("femnura-qgen-print-frame");
-    if (existingIframe) {
-      existingIframe.remove();
-    }
+  const handlePrint = (sessionToPrint) => {
+    const htmlContent = buildPrintHtml(sessionToPrint);
+    printHtmlDirect(htmlContent, "FemNura — Doctor Appointment Prep Summary", "FemNura_Doctor_Prep.html");
+  };
 
-    const printFrame = document.createElement("iframe");
-    printFrame.id = "femnura-qgen-print-frame";
-    printFrame.setAttribute(
-      "style",
-      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
-    );
-    document.body.appendChild(printFrame);
-
-    try {
-      const frameDoc = printFrame.contentWindow.document;
-      frameDoc.open();
-      frameDoc.write(htmlContent);
-      frameDoc.close();
-
-      setTimeout(() => {
-        try {
-          printFrame.contentWindow.focus();
-          printFrame.contentWindow.print();
-        } catch (printErr) {
-          const pWin = window.open("", "_blank");
-          if (pWin) {
-            pWin.document.write(htmlContent);
-            pWin.document.close();
-          } else {
-            window.print();
-          }
-        } finally {
-          setTimeout(() => {
-            try {
-              if (document.body.contains(printFrame)) {
-                document.body.removeChild(printFrame);
-              }
-            } catch (e) {}
-          }, 3500);
-        }
-      }, 350);
-    } catch (e) {
-      window.print();
-    }
+  const handleDownloadPrep = (sessionToPrint) => {
+    const htmlContent = buildPrintHtml(sessionToPrint);
+    downloadPrintableHtmlFile(htmlContent, "FemNura_Doctor_Prep.html");
   };
 
   return (
@@ -302,7 +271,7 @@ export default function DoctorQGen() {
                     Your Personalised Consultation Sheet
                   </h2>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -311,6 +280,14 @@ export default function DoctorQGen() {
                   >
                     {copied ? <Check size={14} className="text-sage-600" /> : <Copy size={14} />}
                     {copied ? "Copied!" : "Copy Questions"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadPrep(result)}
+                    className="gap-1.5 border-plum-300 text-plum-800 hover:bg-plum-50"
+                  >
+                    <Download size={14} /> Download HTML
                   </Button>
                   <Button
                     variant="primary"
@@ -399,13 +376,20 @@ export default function DoctorQGen() {
                   <p className="text-sm font-semibold text-plum-800">{s.questions.length} questions prepared</p>
                   <p className="text-xs text-plum-500 mt-0.5 line-clamp-1">{s.questions[0]}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => handlePrint(s)}
                     className="p-2 text-plum-500 hover:text-plum-900 hover:bg-lavender-50 rounded-lg transition-colors focus-ring"
                     title="Print / Save this past session"
                   >
                     <Printer size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDownloadPrep(s)}
+                    className="p-2 text-plum-500 hover:text-plum-900 hover:bg-lavender-50 rounded-lg transition-colors focus-ring"
+                    title="Download printable HTML"
+                  >
+                    <Download size={16} />
                   </button>
                   <button
                     onClick={() => copyQuestions(s.questions)}

@@ -3,6 +3,7 @@ import { Download, Trash2, ShieldCheck, Check, Globe, FileText, Printer, FileDow
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Disclaimer, Button, Badge } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import { printHtmlDirect, downloadPrintableHtmlFile } from "../utils/printHelper.js";
 
 export default function SettingsPage() {
   const {
@@ -58,10 +59,7 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const exportHealthDataAsPDF = () => {
-    setPdfGenerating(true);
-    const printWindow = window.open("", "_blank");
-
+  const generateHealthReportHtml = () => {
     const primaryContact = trustedContacts[0] || { name: "Not assigned", phone: "N/A", relation: "N/A" };
     const secondaryContact = trustedContacts[1] || null;
 
@@ -330,14 +328,19 @@ export default function SettingsPage() {
       </html>
     `;
 
-    if (!printWindow) {
-      window.print();
-    } else {
-      printWindow.document.write(html);
-      printWindow.document.close();
-    }
+    return html;
+  };
 
-    setTimeout(() => setPdfGenerating(false), 1500);
+  const exportHealthDataAsPDF = () => {
+    setPdfGenerating(true);
+    const html = generateHealthReportHtml();
+    printHtmlDirect(html, `FemNura Complete Health Record - ${userName || "Patient"}`, `FemNura-Health-Record-${(userName || "Patient").replace(/\s+/g, "_")}.html`);
+    setTimeout(() => setPdfGenerating(false), 1200);
+  };
+
+  const downloadHealthReportAsHtml = () => {
+    const html = generateHealthReportHtml();
+    downloadPrintableHtmlFile(html, `FemNura-Health-Record-${(userName || "Patient").replace(/\s+/g, "_")}.html`);
   };
 
   return (
@@ -490,10 +493,21 @@ export default function SettingsPage() {
             size="md"
             onClick={exportHealthDataAsPDF}
             disabled={pdfGenerating}
-            className="gap-2 bg-plum-800 hover:bg-plum-900 shadow-sm text-sm font-bold text-white px-6 py-3 cursor-pointer"
+            className="gap-2 bg-plum-800 hover:bg-plum-900 shadow-sm text-sm font-bold text-white px-5 py-3 cursor-pointer"
           >
-            <FileText size={17} className="text-amber-300" />
-            {pdfGenerating ? "Preparing Clinical Dossier..." : "Export Complete Health Data as PDF"}
+            <Printer size={17} className="text-amber-300" />
+            {pdfGenerating ? "Preparing Clinical Dossier..." : "Print / Export Complete Health Record"}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="md"
+            onClick={downloadHealthReportAsHtml}
+            className="gap-2 border-plum-300 text-plum-800 hover:bg-plum-50 text-sm font-semibold px-4 py-3 cursor-pointer"
+            title="Download self-contained printable report"
+          >
+            <Download size={16} />
+            <span>Save Printable HTML</span>
           </Button>
 
           <button

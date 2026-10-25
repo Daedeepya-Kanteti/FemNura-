@@ -51,7 +51,12 @@ h1, h2, h3, h4, .font-display {
   color: transparent;
 }
 
+#femnura-print-portal {
+  display: none;
+}
+
 @media print {
+  /* Default print cleanup */
   body {
     background: #ffffff !important;
     color: #000000 !important;
@@ -66,4 +71,30 @@ h1, h2, h3, h4, .font-display {
   .print-only {
     display: block !important;
   }
+
+  /* Dedicated FemNura Print Isolation Mode */
+  body.femnura-printing-active {
+    background: #ffffff !important;
+    color: #111827 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.femnura-printing-active > #root,
+  body.femnura-printing-active > *:not(#femnura-print-portal) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  body.femnura-printing-active #femnura-print-portal,
+  body.femnura-printing-active #femnura-print-portal * {
+    display: block !important;
+    visibility: visible !important;
+  }
+  body.femnura-printing-active #femnura-print-portal {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 }
+

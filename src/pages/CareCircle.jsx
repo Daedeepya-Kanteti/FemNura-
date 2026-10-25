@@ -18,6 +18,7 @@ import {
   X,
   ExternalLink,
   ArrowRight,
+  Download,
 } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Button, EmptyState, Disclaimer, Badge } from "../components/UI.jsx";
@@ -27,6 +28,11 @@ import {
   formatPhoneNumberWithCode,
   getDialableNumber,
 } from "../utils/countryCodes.js";
+import {
+  printHtmlDirect,
+  downloadPrintableHtmlFile,
+  generateWalletCardHtml,
+} from "../utils/printHelper.js";
 
 export default function CareCircle() {
   const {
@@ -55,8 +61,6 @@ export default function CareCircle() {
   const [editPhone, setEditPhone] = useState("");
   const [editCode, setEditCode] = useState("+91");
 
-  // In-app Medical Alert Card Modal Preview
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [syncToast, setSyncToast] = useState("");
 
   const triggerSyncToast = (msg) => {
@@ -150,79 +154,28 @@ export default function CareCircle() {
     triggerSyncToast("✓ Emergency Medical ID saved! View Medical Alert page is live updated.");
   };
 
+  const getWalletHtml = () => {
+    return generateWalletCardHtml({
+      patientName: patientName.trim() || userName || "Patient",
+      bloodGroup: bloodGroup || "O+",
+      allergies: allergies || "None declared",
+      conditions: conditions || "None declared",
+      emergencyNotes: emergencyNotes || "Please contact the emergency contacts listed above immediately.",
+      primaryContact,
+      secondaryContact: secondaryContact?.name ? secondaryContact : null,
+    });
+  };
+
   const handlePrintCard = () => {
-    const html = `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>FemNura Emergency Medical Wallet Card - ${userName || "Patient"}</title>
-    <style>
-      @page {
-        size: auto;
-        margin: 15mm;
-      }
-      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #2e1f2d; background: #fff; }
-      .card { width: 380px; border: 2px solid #5f3860; border-radius: 14px; padding: 22px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.08); margin: 0 auto; }
-      .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-      h2 { margin: 10px 0 4px 0; font-size: 20px; color: #421845; }
-      .row { margin: 8px 0; font-size: 13px; line-height: 1.4; }
-      .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
-      .val { font-weight: 600; color: #1e1120; }
-      .notice { margin-top: 16px; padding: 10px 12px; background: #fdf2f8; border-left: 3px solid #db2777; border-radius: 6px; font-size: 11px; color: #831843; font-weight: 600; }
-      .footer { font-size: 10px; color: #888; margin-top: 14px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="badge">EMERGENCY MEDICAL ID</span>
-        <strong style="color:#5f3860; font-size:15px; letter-spacing:0.5px;">FemNura</strong>
-      </div>
-      <h2>${userName || "Patient"}</h2>
-      <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:16px;">${bloodGroup}</span></div>
-      <div class="row"><span class="label">Known Conditions:</span> <span class="val">${conditions || "None declared"}</span></div>
-      <div class="row"><span class="label">Allergies:</span> <span class="val">${allergies || "None declared"}</span></div>
-      <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryContact.name ? `${primaryContact.name} (${primaryContact.relation}) - ${primaryContact.phone}` : "Not assigned"}</span></div>
-      ${secondaryContact.name ? `<div class="row"><span class="label">Secondary Contact:</span> <span class="val">${secondaryContact.name} (${secondaryContact.relation}) - ${secondaryContact.phone}</span></div>` : ""}
-      <div class="row"><span class="label">Emergency Note:</span> <span class="val">${emergencyNotes || "Call primary contact immediately."}</span></div>
-      
-      <div class="notice">
-        FIRST RESPONDERS: In an emergency, please contact the primary emergency contact above immediately.
-      </div>
-      <div class="footer">Fold and carry in wallet or purse. FemNura — Your Health. Your Priority.</div>
-    </div>
-  </body>
-</html>`;
+    triggerSyncToast("🖨️ Opening print preview for your Emergency Medical ID...");
+    const html = getWalletHtml();
+    printHtmlDirect(html, `FemNura Emergency Medical Card - ${patientName || userName || "Patient"}`);
+  };
 
-    const existingIframe = document.getElementById("femnura-wallet-card-frame");
-    if (existingIframe) existingIframe.remove();
-
-    const printFrame = document.createElement("iframe");
-    printFrame.id = "femnura-wallet-card-frame";
-    printFrame.setAttribute(
-      "style",
-      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
-    );
-    document.body.appendChild(printFrame);
-
-    try {
-      const frameDoc = printFrame.contentWindow.document;
-      frameDoc.open();
-      frameDoc.write(html);
-      frameDoc.close();
-
-      setTimeout(() => {
-        try {
-          printFrame.contentWindow.focus();
-          printFrame.contentWindow.print();
-        } catch {
-          window.print();
-        }
-      }, 350);
-    } catch {
-      window.print();
-    }
+  const handleDownloadCard = () => {
+    const html = getWalletHtml();
+    downloadPrintableHtmlFile(html, `FemNura-Emergency-Card-${(patientName || userName || "Patient").replace(/\s+/g, "_")}.html`);
+    triggerSyncToast("💾 Emergency Medical ID Card downloaded as printable file!");
   };
 
   return (
@@ -385,37 +338,42 @@ export default function CareCircle() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    to={currentEmergencyUrl}
-                    className="block w-full"
-                  >
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="w-full justify-center text-xs font-semibold gap-1.5 border-plum-200 hover:border-plum-400 text-plum-900"
-                    >
-                      <Eye size={13} className="text-rose-600" /> View Alert Page
-                    </Button>
-                  </Link>
+              <div className="space-y-2.5">
+                <Link
+                  to={currentEmergencyUrl}
+                  className="block w-full"
+                >
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
-                    onClick={() => setShowPreviewModal(true)}
-                    className="w-full justify-center text-xs font-semibold gap-1 text-plum-700 border-plum-200 hover:bg-lavender-50"
+                    className="w-full justify-center text-xs font-semibold gap-2 border-plum-200 hover:border-plum-400 text-plum-900 bg-lavender-50/80 hover:bg-lavender-100 py-2.5"
+                    title="View fullscreen emergency medical alert page"
                   >
-                    <FileText size={13} /> Quick Preview
+                    <Eye size={14} className="text-rose-600 shrink-0" />
+                    <span>View Alert Page</span>
                   </Button>
-                </div>
+                </Link>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadCard}
+                  className="w-full justify-center text-xs font-semibold gap-2 text-plum-800 border-plum-300 hover:bg-plum-50 py-2.5 cursor-pointer"
+                  title="Download emergency medical ID card"
+                >
+                  <Download size={14} className="text-plum-700 shrink-0" />
+                  <span>Download card</span>
+                </Button>
 
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={handlePrintCard}
-                  className="w-full justify-center text-xs font-semibold gap-1.5 bg-plum-800 hover:bg-plum-900"
+                  className="w-full justify-center text-xs font-semibold gap-2 bg-plum-800 hover:bg-plum-900 text-white shadow-xs py-2.5 cursor-pointer"
+                  title="Print emergency medical ID card"
                 >
-                  <Printer size={14} /> Print Wallet Emergency Card
+                  <Printer size={14} className="shrink-0" />
+                  <span>Print Card</span>
                 </Button>
               </div>
             </div>
@@ -649,126 +607,6 @@ export default function CareCircle() {
           </Card>
         </div>
       </div>
-
-      {/* QUICK PREVIEW MODAL FOR MEDICAL ALERT CARD */}
-      <AnimatePresence>
-        {showPreviewModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              className="bg-slate-900 text-slate-100 border-2 border-rose-500/80 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-5 bg-gradient-to-r from-rose-950/80 to-slate-900 border-b border-rose-800/60 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md">
-                    <ShieldAlert size={20} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 block">
-                      Live Medical Alert View
-                    </span>
-                    <h3 className="font-display text-base font-bold text-white">
-                      {patientName || userName || "Patient"} • {bloodGroup}
-                    </h3>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPreviewModal(false)}
-                  className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
-                <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700 flex items-center justify-between">
-                  <span className="font-semibold text-slate-400">Patient Full Name</span>
-                  <span className="font-bold text-white text-sm">{patientName || userName || "Patient"}</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700">
-                    <span className="font-semibold text-slate-400 block mb-1">Blood Group</span>
-                    <span className="font-mono text-base font-black text-rose-400">{bloodGroup}</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700">
-                    <span className="font-semibold text-slate-400 block mb-1">Status</span>
-                    <span className="font-semibold text-emerald-400">✓ Auto-Synced</span>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700">
-                  <span className="font-bold text-amber-300 block mb-1">Known Medical Conditions</span>
-                  <p className="text-slate-200">{conditions || "None declared"}</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-900/60">
-                  <span className="font-bold text-rose-300 block mb-1">Known Allergies</span>
-                  <p className="text-rose-100 font-medium">{allergies || "None declared"}</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700">
-                  <span className="font-bold text-cyan-300 block mb-1">Emergency Instructions</span>
-                  <p className="text-slate-300">{emergencyNotes || "Call primary contact immediately."}</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-800/90 border border-slate-700 space-y-2">
-                  <span className="font-bold text-emerald-300 block">Emergency Contacts ({trustedContacts.length})</span>
-                  {trustedContacts.length === 0 ? (
-                    <p className="text-slate-400 italic">No contacts added yet.</p>
-                  ) : (
-                    trustedContacts.map((c, i) => (
-                      <div key={c.id || i} className="flex items-center justify-between py-1 border-b border-slate-700/60 last:border-0">
-                        <div>
-                          <span className="font-bold text-white">{c.name}</span>{" "}
-                          <span className="text-slate-400">({c.relation})</span>
-                        </div>
-                        <span className="font-mono text-emerald-400 font-semibold">{c.phone}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap">
-                <Link
-                  to={currentEmergencyUrl}
-                  onClick={() => setShowPreviewModal(false)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md"
-                >
-                  <ExternalLink size={13} /> Open Fullscreen Alert Page
-                </Link>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handlePrintCard}
-                    className="text-xs text-slate-300 border-slate-700 hover:bg-slate-800"
-                  >
-                    <Printer size={13} /> Print
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setShowPreviewModal(false)}
-                    className="text-xs"
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <Disclaimer compact />
     </div>

@@ -14,6 +14,7 @@ import {
   Printer,
   RefreshCw,
   Sparkles,
+  Download,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
@@ -22,6 +23,11 @@ import {
   formatPhoneNumberWithCode,
   getDialableNumber,
 } from "../utils/countryCodes.js";
+import {
+  printHtmlDirect,
+  downloadPrintableHtmlFile,
+  generateWalletCardHtml,
+} from "../utils/printHelper.js";
 
 export default function EmergencyView() {
   const [params] = useSearchParams();
@@ -173,79 +179,40 @@ export default function EmergencyView() {
     }
   };
 
-  const handlePrint = () => {
+  const getCardHtml = () => {
     const primaryC = contactsList[0] || { name: "Not assigned", phone: "", relation: "" };
     const secondaryC = contactsList[1] || null;
 
-    const html = `<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>FemNura Emergency Medical ID - ${finalName}</title>
-    <style>
-      @page { size: auto; margin: 15mm; }
-      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #2e1f2d; background: #fff; }
-      .card { max-width: 500px; border: 2px solid #5f3860; border-radius: 14px; padding: 24px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.08); margin: 0 auto; }
-      .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-      h2 { margin: 10px 0 4px 0; font-size: 22px; color: #421845; }
-      .row { margin: 9px 0; font-size: 13px; line-height: 1.4; }
-      .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
-      .val { font-weight: 600; color: #1e1120; }
-      .notice { margin-top: 16px; padding: 10px 12px; background: #fdf2f8; border-left: 3px solid #db2777; border-radius: 6px; font-size: 11px; color: #831843; font-weight: 600; }
-      .footer { font-size: 10px; color: #888; margin-top: 16px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="badge">EMERGENCY MEDICAL ALERT</span>
-        <strong style="color:#5f3860; font-size:16px;">FemNura</strong>
-      </div>
-      <h2>${finalName}</h2>
-      <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:18px;">${finalBloodGroup}</span></div>
-      <div class="row"><span class="label">Known Medical Conditions:</span> <span class="val">${finalConditions}</span></div>
-      <div class="row"><span class="label">Known Allergies:</span> <span class="val">${finalAllergies}</span></div>
-      <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryC.name ? `${primaryC.name} (${primaryC.relation}) - ${primaryC.phone}` : "Not assigned"}</span></div>
-      ${secondaryC ? `<div class="row"><span class="label">Secondary Contact:</span> <span class="val">${secondaryC.name} (${secondaryC.relation}) - ${secondaryC.phone}</span></div>` : ""}
-      <div class="row"><span class="label">Emergency Instructions:</span> <span class="val">${finalNotes}</span></div>
-      
-      <div class="notice">
-        FIRST RESPONDERS: In an emergency, please notify the primary emergency contact immediately.
-      </div>
-      <div class="footer">FemNura — Your Health. Your Priority. Verified Medical Alert Profile</div>
-    </div>
-  </body>
-</html>`;
-
-    const existingIframe = document.getElementById("femnura-alert-print-frame");
-    if (existingIframe) existingIframe.remove();
-
-    const printFrame = document.createElement("iframe");
-    printFrame.id = "femnura-alert-print-frame";
-    printFrame.setAttribute(
-      "style",
-      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
-    );
-    document.body.appendChild(printFrame);
-
-    try {
-      const frameDoc = printFrame.contentWindow.document;
-      frameDoc.open();
-      frameDoc.write(html);
-      frameDoc.close();
-      setTimeout(() => {
-        try {
-          printFrame.contentWindow.focus();
-          printFrame.contentWindow.print();
-        } catch {
-          window.print();
-        }
-      }, 350);
-    } catch {
-      window.print();
-    }
+    return generateWalletCardHtml({
+      patientName: finalName,
+      bloodGroup: finalBloodGroup,
+      allergies: finalAllergies,
+      conditions: finalConditions,
+      emergencyNotes: finalNotes,
+      primaryContact: primaryC,
+      secondaryContact: secondaryC,
+    });
   };
+
+  const handlePrint = () => {
+    const html = getCardHtml();
+    printHtmlDirect(html, `FemNura Emergency Alert ID - ${finalName}`, `FemNura-Emergency-Card-${finalName.replace(/\s+/g, "_")}.html`);
+  };
+
+  const handleDownload = () => {
+    const html = getCardHtml();
+    downloadPrintableHtmlFile(html, `FemNura-Emergency-Card-${finalName.replace(/\s+/g, "_")}.html`);
+  };
+
+  // Auto-trigger print if requested via query parameter (e.g. ?print=1)
+  useEffect(() => {
+    if (params.get("print") === "1" || params.get("action") === "print") {
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [params]);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 py-8 px-4 sm:px-6">
@@ -276,6 +243,14 @@ export default function EmergencyView() {
               title="Print Emergency Alert Wallet Card"
             >
               <Printer size={13} /> Print Card
+            </button>
+
+            <button
+              onClick={handleDownload}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="Download Printable Card HTML / PDF"
+            >
+              <Download size={13} /> Download
             </button>
 
             <button
