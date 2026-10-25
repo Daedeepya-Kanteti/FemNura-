@@ -205,7 +205,7 @@ export default function RedFlagAlertBanner({
                 {/* Direct Turn-by-Turn Route to Closest Hospital starting from selected area */}
                 {nearestHospital && (
                   <a
-                    href={getDirectionsUrl(nearestHospital.lat, nearestHospital.lng, nearestHospital.name, userLocation)}
+                    href={getDirectionsUrl(nearestHospital, userLocation)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold bg-plum-900 hover:bg-plum-950 text-white shadow-md transition-all cursor-pointer group shrink-0"

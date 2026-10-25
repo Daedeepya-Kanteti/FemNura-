@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BellRing,
@@ -142,6 +143,18 @@ export default function Reminders() {
             <p className="text-xs text-plum-600 mt-1 leading-relaxed">
               The website continuously syncs with the live digital clock in the top-right corner. When an active reminder's time matches the real-time clock, a soft audible chime plays and a notification pops up.
             </p>
+            <div className="mt-3 pt-2.5 border-t border-plum-200/60 flex items-center justify-between flex-wrap gap-2">
+              <span className="text-[11px] font-semibold text-plum-600">
+                ✨ Looking for daily voice habit alarms with gentle circadian pacing?
+              </span>
+              <Link
+                to="/app/nudge-nourish"
+                className="text-xs font-bold text-rose-700 hover:text-rose-900 inline-flex items-center gap-1 bg-white hover:bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 shadow-2xs transition-colors"
+              >
+                <span>Open Nudge & Nourish</span>
+                <Sparkles size={12} className="text-rose-500" />
+              </Link>
+            </div>
           </div>
         </div>
       </Card>

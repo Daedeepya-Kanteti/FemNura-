@@ -427,9 +427,31 @@ export function getSortedHealthCenters(userLat, userLng, filterType = "All") {
 }
 
 // Generate Google Maps navigation URL with route starting from active/selected area
-export function getDirectionsUrl(lat, lng, name, originLocation) {
-  let originParam = "";
+// and ending at that particular hospital (using verified name & address so Google Maps shows the hospital place card)
+export function getDirectionsUrl(destOrLat, lngOrOrigin, nameOrOrigin, maybeOrigin, maybeAddress) {
+  let lat = null;
+  let lng = null;
+  let name = "";
+  let address = "";
+  let originLocation = null;
 
+  if (destOrLat && typeof destOrLat === "object") {
+    // Called as getDirectionsUrl(hospitalObject, userLocation)
+    lat = destOrLat.lat ?? destOrLat.latitude;
+    lng = destOrLat.lng ?? destOrLat.longitude;
+    name = destOrLat.name || "";
+    address = destOrLat.address || "";
+    originLocation = lngOrOrigin;
+  } else {
+    // Called as getDirectionsUrl(lat, lng, name, originLocation, address)
+    lat = destOrLat;
+    lng = lngOrOrigin;
+    name = nameOrOrigin || "";
+    originLocation = maybeOrigin;
+    address = maybeAddress || "";
+  }
+
+  let originParam = "";
   if (originLocation) {
     if (typeof originLocation === "string" && originLocation.trim()) {
       originParam = `&origin=${encodeURIComponent(originLocation.trim())}`;
@@ -456,17 +478,26 @@ export function getDirectionsUrl(lat, lng, name, originLocation) {
   const hasDestCoords =
     lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng));
 
-  const destination = hasDestCoords
-    ? `${Number(lat)},${Number(lng)}`
-    : encodeURIComponent(name || "emergency hospital");
-
-  // If we have destination coordinates or an origin, open Google Maps directions router
-  if (hasDestCoords || originParam) {
-    return `https://www.google.com/maps/dir/?api=1${originParam}&destination=${destination}`;
+  // Build human-readable destination for that particular hospital so Google Maps displays
+  // the verified hospital entity, place card, and name instead of a generic coordinate pin
+  let destination = "";
+  if (name && name.trim()) {
+    const trimmedName = name.trim();
+    if (address && address.trim()) {
+      destination = encodeURIComponent(`${trimmedName}, ${address.trim()}`);
+    } else {
+      destination = encodeURIComponent(trimmedName);
+    }
+  } else if (address && address.trim()) {
+    destination = encodeURIComponent(address.trim());
+  } else if (hasDestCoords) {
+    destination = `${Number(lat)},${Number(lng)}`;
+  } else {
+    destination = encodeURIComponent("emergency hospital");
   }
 
-  // Fallback to query search if neither coords nor origin are known
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name || "emergency hospital")}`;
+  // Open Google Maps turn-by-turn directions router
+  return `https://www.google.com/maps/dir/?api=1${originParam}&destination=${destination}`;
 }
 
 // Get closest emergency hospital relative to user location
@@ -481,7 +512,7 @@ export function getNearestHospital(userLocation, filterType = "All") {
 export function getNearestHospitalDirectionsUrl(userLocation, filterType = "All") {
   const nearest = getNearestHospital(userLocation, filterType);
   if (!nearest) return null;
-  return getDirectionsUrl(nearest.lat, nearest.lng, nearest.name, userLocation);
+  return getDirectionsUrl(nearest, userLocation);
 }
 
 // Popular regional city & district presets

@@ -19,11 +19,25 @@ import {
   UserCheck,
   ArrowLeft,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 import RealtimeClockWidget from "../components/RealtimeClockWidget.jsx";
 import SOSModal from "../components/SOSModal.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+
+// Dedicated clock/bell with sparkles icon for Nudge & Nourish
+function NudgeNavIcon({ size = 18, className = "" }) {
+  return (
+    <span className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
+      <BellRing size={size} />
+      <Sparkles
+        size={Math.max(9, Math.round(size * 0.55))}
+        className="absolute -top-1 -right-1 text-rose-500 fill-rose-300"
+      />
+    </span>
+  );
+}
 
 const nav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -31,6 +45,7 @@ const nav = [
   { to: "/app/mood", label: "Mood Tracker", icon: Smile },
   { to: "/app/cycle", label: "Cycle Tracker", icon: CalendarHeart },
   { to: "/app/reminders", label: "Reminders", icon: BellRing },
+  { to: "/app/nudge-nourish", label: "Nudge & Nourish", icon: NudgeNavIcon },
   { to: "/app/timeline", label: "Health Timeline", icon: History },
   { to: "/app/doctor-qgen", label: "Doctor Q-Gen", icon: Stethoscope },
   { to: "/app/vault", label: "Medical Vault", icon: FileText },

@@ -291,15 +291,10 @@ export default function Dashboard() {
             </div>
             <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
               <QuickAction to="/app/symptoms" label="Log a symptom" desc="Takes under a minute" icon={HeartPulse} />
+              <QuickAction to="/app/nudge-nourish" label="Nudge & Nourish" desc="Voice alarms & habit chimes" icon={Sparkles} />
               <QuickAction to="/app/vault" label="Medical Vault" desc="Upload reports & prescriptions" icon={FileText} />
               <QuickAction to="/app/mood" label="Log your mood" desc="How are you feeling today?" icon={Smile} />
               <QuickAction to="/app/doctor-qgen" label="Prepare for a visit" desc="Generate doctor questions" icon={Stethoscope} />
-              <QuickAction
-                onClick={() => setSwitchAccountModalOpen(true)}
-                label="Switch Account"
-                desc={`Currently: ${userName || "Active user"}`}
-                icon={UserCheck}
-              />
               <QuickAction to="/app/reminders" label="Reminders" desc="Medications, water & mood" icon={BellRing} />
             </div>
           </Card>

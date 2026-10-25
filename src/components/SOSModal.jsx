@@ -480,7 +480,7 @@ export default function SOSModal({ isOpen, onClose }) {
                     </div>
 
                     <a
-                      href={getDirectionsUrl(hc.lat, hc.lng, hc.name, userLocation)}
+                      href={getDirectionsUrl(hc, userLocation)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-2.5 py-1 rounded-xl bg-plum-800 hover:bg-plum-900 text-white font-bold flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"

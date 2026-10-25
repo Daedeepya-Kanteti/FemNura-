@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import SymptomTracker from "./pages/SymptomTracker.jsx";
 import MoodTracker from "./pages/MoodTracker.jsx";
 import Reminders from "./pages/Reminders.jsx";
+import NudgeNourish from "./pages/NudgeNourish.jsx";
 import Timeline from "./pages/Timeline.jsx";
 import DoctorQGen from "./pages/DoctorQGen.jsx";
 import CycleTracker from "./pages/CycleTracker.jsx";
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="symptoms" element={<SymptomTracker />} />
           <Route path="mood" element={<MoodTracker />} />
           <Route path="reminders" element={<Reminders />} />
+          <Route path="nudge-nourish" element={<NudgeNourish />} />
           <Route path="timeline" element={<Timeline />} />
           <Route path="doctor-qgen" element={<DoctorQGen />} />
           <Route path="cycle" element={<CycleTracker />} />
