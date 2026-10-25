@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   HeartPulse,
   CalendarHeart,
@@ -15,6 +15,10 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
+  UserCheck,
+  UserPlus,
+  X,
+  Trash2,
 } from "lucide-react";
 import Logo from "../components/Logo.jsx";
 import SOSModal from "../components/SOSModal.jsx";
@@ -88,11 +92,15 @@ const toneMap = {
 
 export default function Landing() {
   const [sosOpen, setSosOpen] = useState(false);
+  const [switchAccountModalOpen, setSwitchAccountModalOpen] = useState(false);
 
   return (
     <div className="bg-ivory text-charcoal overflow-x-hidden">
-      <Nav onOpenSOS={() => setSosOpen(true)} />
-      <Hero />
+      <Nav
+        onOpenSOS={() => setSosOpen(true)}
+        onOpenSwitchAccount={() => setSwitchAccountModalOpen(true)}
+      />
+      <Hero onOpenSwitchAccount={() => setSwitchAccountModalOpen(true)} />
       <TrustStrip />
       <FeaturesSection />
       <HowItWorks />
@@ -101,13 +109,18 @@ export default function Landing() {
       <FinalCTA />
       <Footer />
       <SOSModal isOpen={sosOpen} onClose={() => setSosOpen(false)} />
+      <SwitchAccountLandingModal
+        isOpen={switchAccountModalOpen}
+        onClose={() => setSwitchAccountModalOpen(false)}
+      />
     </div>
   );
 }
 
-function Nav({ onOpenSOS }) {
-  const { getLastLoginData, isDemoActive } = useDemoData();
+function Nav({ onOpenSOS, onOpenSwitchAccount }) {
+  const { getLastLoginData, loginWithAccount } = useDemoData();
   const { account } = getLastLoginData();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md bg-ivory/80 border-b border-plum-100">
@@ -119,36 +132,65 @@ function Nav({ onOpenSOS }) {
           <a href="#who" className="hover:text-plum-900 transition-colors">Who it's for</a>
           <a href="#safety" className="hover:text-plum-900 transition-colors">Our approach</a>
         </nav>
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <button
             type="button"
             onClick={onOpenSOS}
-            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black tracking-wide flex items-center gap-1.5 shadow-sm ring-2 ring-rose-200/90 animate-pulse transition-transform hover:scale-105 cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black tracking-wide flex items-center gap-1.5 shadow-sm ring-2 ring-rose-200/90 animate-pulse transition-transform hover:scale-105 cursor-pointer shrink-0"
             title="Open Emergency SOS Protocol"
             aria-label="Emergency SOS"
           >
             <AlertTriangle size={14} className="text-white" />
             <span>SOS</span>
           </button>
-          <Link to="/start" className="hidden xs:inline-block">
-            <Button variant="ghost" size="sm">
-              {account ? "Switch account" : "Log in"}
-            </Button>
-          </Link>
-          <Link to={isDemoActive ? "/app" : "/start"}>
-            <Button variant="primary" size="sm">
+
+          {/* Switch Account option right near Continue as <name> */}
+          <button
+            type="button"
+            onClick={onOpenSwitchAccount}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-plum-800 bg-white hover:bg-lavender-50 border border-plum-200/90 hover:border-plum-300 shadow-2xs transition-all cursor-pointer focus-ring"
+            title="Switch or choose another account profile"
+          >
+            <UserCheck size={14} className="text-plum-600" />
+            <span>Switch account</span>
+          </button>
+
+          {/* Continue as <name> button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (account) {
+                loginWithAccount(account);
+                navigate("/app");
+              } else {
+                navigate("/start");
+              }
+            }}
+            className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer focus-ring shrink-0"
+          >
+            {account && (
+              <span
+                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-2xs shrink-0"
+                style={{ backgroundColor: account.avatarColor || "#7B5689" }}
+              >
+                {(account.name?.[0] || "U").toUpperCase()}
+              </span>
+            )}
+            <span className="truncate max-w-[125px] sm:max-w-none">
               {account ? `Continue as ${account.name}` : "Get Started"}
-            </Button>
-          </Link>
+            </span>
+            <ArrowRight size={14} className="hidden sm:inline" />
+          </button>
         </div>
       </div>
     </header>
   );
 }
 
-function Hero() {
-  const { getLastLoginData, isDemoActive } = useDemoData();
+function Hero({ onOpenSwitchAccount }) {
+  const { getLastLoginData, loginWithAccount } = useDemoData();
   const { account } = getLastLoginData();
+  const navigate = useNavigate();
 
   return (
     <section className="relative bg-grad-hero pt-16 pb-24 lg:pt-24 lg:pb-32">
@@ -185,13 +227,32 @@ function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.32 }}
-            className="mt-9 flex flex-wrap items-center gap-4"
+            className="mt-9 flex flex-wrap items-center gap-3"
           >
-            <Link to={isDemoActive ? "/app" : "/start"}>
-              <Button variant="primary" size="lg">
-                {account ? `Continue as ${account.name}` : "Start Your Health Journey"} <ArrowRight size={18} />
-              </Button>
-            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (account) {
+                  loginWithAccount(account);
+                  navigate("/app");
+                } else {
+                  navigate("/start");
+                }
+              }}
+              className="px-6 py-3.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-base font-semibold shadow-md transition-all flex items-center gap-2 cursor-pointer focus-ring"
+            >
+              {account ? `Continue as ${account.name}` : "Start Your Health Journey"} <ArrowRight size={18} />
+            </button>
+            {account && (
+              <button
+                type="button"
+                onClick={onOpenSwitchAccount}
+                className="px-4 py-3.5 rounded-xl border border-plum-200 bg-white hover:bg-lavender-50 text-plum-800 text-sm font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer focus-ring"
+              >
+                <UserCheck size={16} className="text-plum-600" />
+                <span>Switch account</span>
+              </button>
+            )}
             <a href="#features">
               <Button variant="secondary" size="lg">Explore FemNura</Button>
             </a>
@@ -501,3 +562,262 @@ function Footer() {
     </footer>
   );
 }
+
+function SwitchAccountLandingModal({ isOpen, onClose }) {
+  const {
+    savedAccounts,
+    lastLoginAccount,
+    loginWithAccount,
+    registerOrLogin,
+    removeSavedAccount,
+  } = useDemoData();
+  const navigate = useNavigate();
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSelectAccount = (acc) => {
+    loginWithAccount(acc);
+    onClose();
+    navigate("/app");
+  };
+
+  const handleCreateAccount = (e) => {
+    e.preventDefault();
+    if (!newName.trim()) return;
+
+    const trimmedName = newName.trim();
+    const cleanEmail =
+      newEmail.trim() ||
+      `${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, "")}_${Date.now().toString().slice(-4)}@femnura.app`;
+
+    registerOrLogin({
+      name: trimmedName,
+      email: cleanEmail,
+      password: newPassword,
+    });
+
+    setNewName("");
+    setNewEmail("");
+    setNewPassword("");
+    setShowAddForm(false);
+    onClose();
+    navigate("/app");
+  };
+
+  const handleDelete = (e, acc) => {
+    e.stopPropagation();
+    if (savedAccounts.length <= 1) return;
+    if (window.confirm(`Remove saved account "${acc.name}"?`)) {
+      removeSavedAccount(acc.id);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-plum-950/65 backdrop-blur-xs overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          className="bg-white rounded-3xl shadow-2xl border border-plum-100 w-full max-w-lg overflow-hidden my-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-plum-800 via-plum-900 to-plum-950 text-white p-5 sm:p-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white">
+                <UserCheck size={20} />
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-bold">Switch Account Profile</h3>
+                <p className="text-xs text-plum-200">
+                  Select a saved account or add a new member profile
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                setShowAddForm(false);
+              }}
+              className="p-1.5 text-plum-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            {/* Account list */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-plum-700 mb-2">
+                Available Profiles ({savedAccounts.length})
+              </label>
+              <div className="divide-y divide-plum-100 border border-plum-200 rounded-2xl overflow-hidden bg-white">
+                {savedAccounts.map((acc) => {
+                  const isSelected = lastLoginAccount?.id === acc.id;
+                  const initial = (acc.name?.[0] || "U").toUpperCase();
+
+                  return (
+                    <div
+                      key={acc.id}
+                      onClick={() => handleSelectAccount(acc)}
+                      className={`flex items-center justify-between p-3.5 transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-lavender-50/80 ring-1 ring-inset ring-plum-300"
+                          : "hover:bg-lavender-50/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-xs shrink-0"
+                          style={{ backgroundColor: acc.avatarColor || "#7B5689" }}
+                        >
+                          {initial}
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-plum-900 text-sm truncate">{acc.name}</p>
+                            {isSelected && (
+                              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Last active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-plum-500 truncate">{acc.email}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectAccount(acc);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                        >
+                          Select & Enter
+                        </button>
+
+                        {savedAccounts.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(e, acc)}
+                            className="p-1.5 text-plum-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            title="Remove saved account"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Add another profile */}
+            {!showAddForm ? (
+              <button
+                type="button"
+                onClick={() => setShowAddForm(true)}
+                className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-plum-200 hover:border-plum-400 text-plum-700 hover:bg-lavender-50/50 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <UserPlus size={16} className="text-plum-600" />
+                <span>+ Add Another Profile</span>
+              </button>
+            ) : (
+              <form
+                onSubmit={handleCreateAccount}
+                className="p-4 rounded-2xl border border-plum-200 bg-lavender-50/40 space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-plum-900 flex items-center gap-1.5">
+                    <UserPlus size={14} className="text-plum-700" /> Add New Profile
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddForm(false)}
+                    className="text-xs text-plum-400 hover:text-plum-700 font-semibold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-plum-700 mb-1">
+                    Name / Nickname *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. Deepya, Maya, Mom"
+                    className="w-full rounded-xl border border-plum-200 px-3 py-2 text-xs text-plum-900 focus-ring bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-plum-700 mb-1">
+                    Email Address (optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="e.g. deepya@example.com (or auto-generated)"
+                    className="w-full rounded-xl border border-plum-200 px-3 py-2 text-xs text-plum-900 focus-ring bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-plum-700 mb-1">
+                    Password (optional)
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Optional password"
+                    className="w-full rounded-xl border border-plum-200 px-3 py-2 text-xs text-plum-900 focus-ring bg-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Create & Enter FemNura</span>
+                </button>
+              </form>
+            )}
+
+            {/* Footer link to full account manager */}
+            <div className="pt-2 border-t border-plum-100 flex items-center justify-between text-xs text-plum-500">
+              <span>Looking for full login screen?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate("/start");
+                }}
+                className="font-bold text-plum-700 hover:text-plum-900 hover:underline cursor-pointer"
+              >
+                Open Account Manager &rarr;
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}
+

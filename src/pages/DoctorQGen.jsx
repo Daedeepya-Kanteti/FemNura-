@@ -73,96 +73,138 @@ export default function DoctorQGen() {
 
   const handlePrint = (sessionToPrint) => {
     const questions = sessionToPrint?.questions || result?.questions || [];
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      window.print();
-      return;
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FemNura — Doctor Appointment Prep Summary</title>
+    <style>
+      @page {
+        size: A4;
+        margin: 18mm 15mm 18mm 15mm;
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #2e1f2d; margin: 0; padding: 24px; line-height: 1.6; font-size: 13px; }
+      .header { border-bottom: 2px solid #5f3860; padding-bottom: 16px; margin-bottom: 20px; }
+      .logo { font-size: 24px; font-weight: bold; color: #5f3860; }
+      .tagline { font-size: 11px; color: #7a5689; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+      .meta { font-size: 13px; color: #555; margin-top: 8px; }
+      .section { margin-bottom: 20px; }
+      h2 { font-size: 15px; color: #5f3860; border-bottom: 1px solid #e5dbe4; padding-bottom: 4px; margin-bottom: 10px; }
+      ol { padding-left: 20px; margin: 0; }
+      li { margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+      .box { background: #faf7fc; border: 1px solid #e2d7e5; border-radius: 8px; padding: 12px 14px; font-size: 12px; margin-bottom: 14px; }
+      .footer { margin-top: 30px; font-size: 10px; color: #777; border-top: 1px solid #ddd; padding-top: 10px; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="logo">FemNura</div>
+      <div class="tagline">Your Health. Your Priority.</div>
+      <div class="meta">
+        <strong>Patient:</strong> ${userName || "Patient"} &nbsp;|&nbsp; 
+        <strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+        ${doctorName ? `&nbsp;|&nbsp; <strong>Prepared for:</strong> Dr. ${doctorName}` : ""}
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Prepared Questions for Consultation</h2>
+      <ol>
+        ${questions.map((q) => `<li><strong>${q}</strong></li>`).join("")}
+      </ol>
+    </div>
+
+    ${
+      customNote
+        ? `
+      <div class="section">
+        <h2>Patient's Personal Notes / Specific Concerns</h2>
+        <div class="box">${customNote}</div>
+      </div>
+    `
+        : ""
     }
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>FemNura — Doctor Appointment Prep Summary</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #2e1f2d; margin: 40px; line-height: 1.6; }
-            .header { border-bottom: 2px solid #5f3860; padding-bottom: 16px; margin-bottom: 24px; }
-            .logo { font-size: 24px; font-weight: bold; color: #5f3860; }
-            .tagline { font-size: 13px; color: #7a5689; text-transform: uppercase; letter-spacing: 1px; }
-            .meta { font-size: 14px; color: #555; margin-top: 8px; }
-            .section { margin-bottom: 24px; }
-            h2 { font-size: 17px; color: #5f3860; border-bottom: 1px solid #e5dbe4; padding-bottom: 6px; margin-bottom: 12px; }
-            ol { padding-left: 20px; }
-            li { margin-bottom: 10px; font-size: 14px; }
-            .box { background: #faf7fc; border: 1px solid #e2d7e5; border-radius: 8px; padding: 12px 16px; font-size: 13px; margin-bottom: 16px; }
-            .footer { margin-top: 40px; font-size: 11px; color: #777; border-top: 1px solid #ddd; padding-top: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo">FemNura</div>
-            <div class="tagline">Your Health. Your Priority.</div>
-            <div class="meta">
-              <strong>Patient:</strong> ${userName || "Patient"} &nbsp;|&nbsp; 
-              <strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
-              ${doctorName ? `&nbsp;|&nbsp; <strong>Prepared for:</strong> Dr. ${doctorName}` : ""}
-            </div>
-          </div>
+    <div class="section">
+      <h2>Recent Logged Health Context (From Patient's Diary)</h2>
+      <div class="box">
+        ${
+          symptoms.length
+            ? `<strong>Recent Symptoms:</strong> ${symptoms.slice(0, 4).map((s) => `${s.name} (${s.severity})`).join(", ")}<br/>`
+            : ""
+        }
+        ${
+          cycleEntries.length
+            ? `<strong>Latest Cycle Phase:</strong> ${cycleEntries[0].phase}${cycleEntries[0].flow ? ` (${cycleEntries[0].flow} flow)` : ""}<br/>`
+            : ""
+        }
+        ${moods.length ? `<strong>Recent Mood Trend:</strong> ${moods[0].mood}` : ""}
+      </div>
+    </div>
 
-          <div class="section">
-            <h2>Prepared Questions for Consultation</h2>
-            <ol>
-              ${questions.map((q) => `<li><strong>${q}</strong></li>`).join("")}
-            </ol>
-          </div>
+    <div class="section">
+      <h2>Doctor's Notes & Recommendations</h2>
+      <div style="height: 110px; border: 1px dashed #ccc; border-radius: 8px; padding: 10px; color: #999; font-size: 11px;">
+        Space for physician's examination notes, follow-up testing orders, or medication advice...
+      </div>
+    </div>
 
-          ${
-            customNote
-              ? `
-            <div class="section">
-              <h2>Patient's Personal Notes / Specific Concerns</h2>
-              <div class="box">${customNote}</div>
-            </div>
-          `
-              : ""
+    <div class="footer">
+      Disclaimer: FemNura provides health tracking and tools to prepare for healthcare appointments. It does not diagnose conditions or replace a qualified healthcare professional.
+    </div>
+  </body>
+</html>`;
+
+    const existingIframe = document.getElementById("femnura-qgen-print-frame");
+    if (existingIframe) {
+      existingIframe.remove();
+    }
+
+    const printFrame = document.createElement("iframe");
+    printFrame.id = "femnura-qgen-print-frame";
+    printFrame.setAttribute(
+      "style",
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
+    );
+    document.body.appendChild(printFrame);
+
+    try {
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(htmlContent);
+      frameDoc.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (printErr) {
+          const pWin = window.open("", "_blank");
+          if (pWin) {
+            pWin.document.write(htmlContent);
+            pWin.document.close();
+          } else {
+            window.print();
           }
-
-          <div class="section">
-            <h2>Recent Logged Health Context (From Patient's Diary)</h2>
-            <div class="box">
-              ${
-                symptoms.length
-                  ? `<strong>Recent Symptoms:</strong> ${symptoms.slice(0, 4).map((s) => `${s.name} (${s.severity})`).join(", ")}<br/>`
-                  : ""
+        } finally {
+          setTimeout(() => {
+            try {
+              if (document.body.contains(printFrame)) {
+                document.body.removeChild(printFrame);
               }
-              ${
-                cycleEntries.length
-                  ? `<strong>Latest Cycle Phase:</strong> ${cycleEntries[0].phase}${cycleEntries[0].flow ? ` (${cycleEntries[0].flow} flow)` : ""}<br/>`
-                  : ""
-              }
-              ${moods.length ? `<strong>Recent Mood Trend:</strong> ${moods[0].mood}` : ""}
-            </div>
-          </div>
-
-          <div class="section">
-            <h2>Doctor's Notes & Recommendations</h2>
-            <div style="height: 120px; border: 1px dashed #ccc; border-radius: 8px; padding: 10px; color: #999; font-size: 12px;">
-              Space for physician's examination notes, follow-up testing orders, or medication advice...
-            </div>
-          </div>
-
-          <div class="footer">
-            Disclaimer: FemNura provides health tracking and tools to prepare for healthcare appointments. It does not diagnose conditions or replace a qualified healthcare professional.
-          </div>
-          <script>
-            window.onload = function() { window.print(); }
-          </script>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+            } catch (e) {}
+          }, 3500);
+        }
+      }, 350);
+    } catch (e) {
+      window.print();
+    }
   };
 
   return (

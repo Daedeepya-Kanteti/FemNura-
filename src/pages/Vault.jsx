@@ -363,6 +363,384 @@ CONFIDENTIAL HEALTH RECORD • STORED IN FEMNURA LOCAL VAULT
     }
   };
 
+  // Robust on-demand print engine that formats a pristine medical report
+  // and prints via a hidden iframe to bypass browser popup blockers in iframe environments
+  const printDocument = (docToPrint) => {
+    const doc = docToPrint || activePreviewDoc;
+    if (!doc) return;
+
+    triggerToast(`Preparing "${doc.name}" for print / PDF export...`);
+
+    const hasParameters = doc.parameters && doc.parameters.length > 0;
+    const hasImage = Boolean(doc.dataUrl && (doc.fileType?.startsWith("image/") || doc.dataUrl.startsWith("data:image")));
+
+    const parametersHtml = hasParameters
+      ? `
+        <div class="section">
+          <div class="section-title">Diagnostic Parameters & Test Results</div>
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Test Parameter</th>
+                <th>Observed Value</th>
+                <th>Standard Reference Range</th>
+                <th>Evaluation</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${doc.parameters
+                .map(
+                  (p) => `
+                <tr>
+                  <td><strong>${p.param}</strong></td>
+                  <td class="value">${p.value}</td>
+                  <td class="ref">${p.range}</td>
+                  <td><span class="status-tag status-${(p.status || "").toLowerCase().replace(/[^a-z]/g, "")}">${p.status}</span></td>
+                </tr>
+              `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      `
+      : "";
+
+    const imageHtml = hasImage
+      ? `
+        <div class="section">
+          <div class="section-title">Attached Medical Scan / Document Image</div>
+          <div class="image-container">
+            <img src="${doc.dataUrl}" alt="${doc.name}" />
+          </div>
+        </div>
+      `
+      : "";
+
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>FemNura Medical Vault — ${doc.name}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #2e1f2d;
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+      font-size: 13px;
+      background: #ffffff;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #5f3860;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+    .brand-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #5f3860;
+      letter-spacing: -0.5px;
+      margin: 0;
+    }
+    .brand-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: #7a5689;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 2px;
+    }
+    .vault-tag {
+      text-align: right;
+    }
+    .badge {
+      display: inline-block;
+      background: #f3ebf6;
+      color: #5f3860;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #dccadc;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .doc-headline {
+      margin-bottom: 16px;
+    }
+    .doc-headline h1 {
+      font-size: 20px;
+      color: #2e1f2d;
+      margin: 0 0 4px 0;
+      font-weight: 700;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      background: #faf7fc;
+      border: 1px solid #e8dfea;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+    }
+    .meta-item label {
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #7a5689;
+      margin-bottom: 2px;
+    }
+    .meta-item span {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2e1f2d;
+    }
+    .section {
+      margin-bottom: 18px;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #5f3860;
+      border-bottom: 1px solid #ebdfee;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+    .notes-box {
+      background: #fafafa;
+      border: 1px solid #e2dce3;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 13px;
+      color: #3b2c3a;
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      border: 1px solid #e2dce3;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .param-table th {
+      background: #f4edf5;
+      color: #5f3860;
+      font-weight: 700;
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e2dce3;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .param-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .param-table tr:last-child td {
+      border-bottom: none;
+    }
+    .param-table td.value {
+      font-weight: 700;
+      color: #2e1f2d;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .param-table td.ref {
+      color: #666;
+    }
+    .status-tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #e9ecef;
+      color: #495057;
+    }
+    .status-normal, .status-optimal {
+      background: #e6f7ec;
+      color: #1e7e34;
+    }
+    .status-prescribed {
+      background: #eef2ff;
+      color: #3730a3;
+    }
+    .image-container {
+      text-align: center;
+      padding: 12px;
+      background: #faf7fc;
+      border: 1px solid #e8dfea;
+      border-radius: 8px;
+    }
+    .image-container img {
+      max-width: 100%;
+      max-height: 480px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+    .doctor-sign-box {
+      margin-top: 18px;
+      height: 70px;
+      border: 1px dashed #d1c4d4;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      color: #888;
+      background: #faf9fb;
+    }
+    .footer {
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand-title">FemNura</div>
+      <div class="brand-sub">Medical History Vault • Confidential Record</div>
+    </div>
+    <div class="vault-tag">
+      <span class="badge">${doc.category}</span>
+    </div>
+  </div>
+
+  <div class="doc-headline">
+    <h1>${doc.name}</h1>
+    <div style="font-size: 12px; color: #666;">
+      Issued by <strong>${doc.doctor || "Physician"}</strong> at <strong>${doc.facility || "Care Center"}</strong>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <label>Patient</label>
+      <span>${userName || "Patient"}</span>
+    </div>
+    <div class="meta-item">
+      <label>Record Date</label>
+      <span>${new Date(doc.date).toLocaleDateString()}</span>
+    </div>
+    <div class="meta-item">
+      <label>Document Category</label>
+      <span>${doc.category}</span>
+    </div>
+    <div class="meta-item">
+      <label>Verified Storage</label>
+      <span>Encrypted Local Vault</span>
+    </div>
+  </div>
+
+  ${
+    doc.notes
+      ? `
+    <div class="section">
+      <div class="section-title">Physician Notes & Clinical Findings</div>
+      <div class="notes-box">${doc.notes}</div>
+    </div>
+  `
+      : ""
+  }
+
+  ${parametersHtml}
+
+  ${imageHtml}
+
+  <div class="doctor-sign-box">
+    Physician / Clinic Verification Stamp & Reviewer Signature:
+  </div>
+
+  <div class="footer">
+    <div>FemNura • Your Health. Your Priority. Local Health Vault • Verified Confidential Record</div>
+    <div>Document Reference: ${doc.id}</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.focus();
+        window.print();
+      }, 300);
+    };
+  </script>
+</body>
+</html>`;
+
+    // Hidden iframe injection ensures printing works seamlessly inside iframe wrappers & sandbox environments
+    const existingIframe = document.getElementById("femnura-print-frame");
+    if (existingIframe) {
+      existingIframe.remove();
+    }
+
+    const printFrame = document.createElement("iframe");
+    printFrame.id = "femnura-print-frame";
+    printFrame.setAttribute(
+      "style",
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
+    );
+    document.body.appendChild(printFrame);
+
+    try {
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(htmlContent);
+      frameDoc.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch (printErr) {
+          console.warn("Iframe print triggered fallback:", printErr);
+          const pWin = window.open("", "_blank");
+          if (pWin) {
+            pWin.document.write(htmlContent);
+            pWin.document.close();
+          } else {
+            window.print();
+          }
+        } finally {
+          setTimeout(() => {
+            try {
+              if (document.body.contains(printFrame)) {
+                document.body.removeChild(printFrame);
+              }
+            } catch (e) {}
+          }, 4000);
+        }
+      }, 400);
+    } catch (e) {
+      console.error("Print frame generation fallback:", e);
+      window.print();
+    }
+  };
+
   // Filter & Sort
   const filteredFiles = useMemo(() => {
     return vaultFiles
@@ -724,6 +1102,14 @@ CONFIDENTIAL HEALTH RECORD • STORED IN FEMNURA LOCAL VAULT
                       aria-label="View document"
                     >
                       <Eye size={16} />
+                    </button>
+                    <button
+                      onClick={() => printDocument(f)}
+                      className="p-1.5 rounded-lg text-plum-600 hover:text-plum-950 hover:bg-lavender-100 transition-colors cursor-pointer"
+                      title="Print or export PDF"
+                      aria-label="Print document"
+                    >
+                      <Printer size={16} />
                     </button>
                     <button
                       onClick={() => downloadFile(f)}
@@ -1093,7 +1479,7 @@ CONFIDENTIAL HEALTH RECORD • STORED IN FEMNURA LOCAL VAULT
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={() => printDocument(activePreviewDoc)}
                     className="px-3.5 py-2 rounded-xl border border-plum-200 bg-white hover:bg-plum-50 text-plum-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Printer size={15} />
