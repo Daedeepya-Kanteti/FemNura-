@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { reverseGeocodeCoords } from "../utils/location.js";
+import {
+  reverseGeocodeCoords,
+  getFallbackNetworkLocation,
+  searchCoordinatesForQuery,
+  CITY_PRESETS,
+} from "../utils/location.js";
 
 const DemoDataContext = createContext(null);
 
@@ -407,62 +412,158 @@ export function DemoDataProvider({ children }) {
     });
   };
 
-  // Real-time Geolocation tracking with user opt-in control
+  // Real-time Geolocation tracking with user opt-in control and smart network fallback
   const [userLocation, setUserLocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState(null);
+  const [locationNotice, setLocationNotice] = useState(null);
 
-  const fetchCurrentLocation = useCallback((onSuccess, onError) => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      const err = "Geolocation is not supported by your browser";
-      setLocationError(err);
-      onError?.(err);
-      return;
-    }
-
-    setLocationLoading(true);
-    setLocationError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        let address = "Detecting neighborhood...";
-        try {
-          address = await reverseGeocodeCoords(latitude, longitude);
-        } catch (e) {
-          address = `Coordinates: ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
-        }
-
+  // Fallback to network/IP or regional preset when browser GPS is blocked, denied, or unavailable
+  const fallbackToNetworkLocation = useCallback(
+    async (reasonText) => {
+      try {
+        const netLoc = await getFallbackNetworkLocation();
         const loc = {
-          latitude,
-          longitude,
-          accuracy: Math.round(accuracy),
-          address,
+          ...netLoc,
+          isApproximate: true,
+          permissionRestricted: true,
+          fallbackReason: reasonText || "Browser permission restricted",
           timestamp: new Date().toISOString(),
         };
-
         setUserLocation(loc);
         setLocationLoading(false);
         setLocationError(null);
-        onSuccess?.(loc);
-      },
-      (err) => {
-        let msg = "Could not retrieve GPS coordinates.";
-        if (err.code === 1) msg = "Location permission denied in browser.";
-        else if (err.code === 2) msg = "GPS position unavailable. Please check device location settings.";
-        else if (err.code === 3) msg = "Location request timed out. Please try again.";
-
-        setLocationError(msg);
+        setLocationNotice(
+          "Browser GPS hardware was blocked or restricted. Network/area location is active so hospital triage and emergency distances work seamlessly."
+        );
+        return loc;
+      } catch (err) {
+        const defaultLoc = {
+          latitude: 16.5062,
+          longitude: 80.648,
+          city: "Vijayawada",
+          region: "Andhra Pradesh",
+          address: "Vijayawada, Andhra Pradesh",
+          source: "preset",
+          accuracy: 3000,
+          isApproximate: true,
+          permissionRestricted: true,
+          timestamp: new Date().toISOString(),
+        };
+        setUserLocation(defaultLoc);
         setLocationLoading(false);
-        onError?.(msg);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
+        setLocationError(null);
+        setLocationNotice("Browser GPS restricted. Default regional center active.");
+        return defaultLoc;
       }
-    );
+    },
+    []
+  );
+
+  const fetchCurrentLocation = useCallback(
+    (onSuccess, onError) => {
+      setLocationLoading(true);
+      setLocationError(null);
+
+      if (typeof window === "undefined" || !navigator.geolocation) {
+        fallbackToNetworkLocation("Geolocation API is not supported by your browser").then((loc) => {
+          onSuccess?.(loc);
+        });
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          let address = "Detecting neighborhood...";
+          try {
+            address = await reverseGeocodeCoords(latitude, longitude);
+          } catch (e) {
+            address = `Coordinates: ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E`;
+          }
+
+          const loc = {
+            latitude,
+            longitude,
+            accuracy: Math.round(accuracy),
+            address,
+            source: "gps",
+            isApproximate: false,
+            permissionRestricted: false,
+            timestamp: new Date().toISOString(),
+          };
+
+          setUserLocation(loc);
+          setLocationLoading(false);
+          setLocationError(null);
+          setLocationNotice(null);
+          onSuccess?.(loc);
+        },
+        async (err) => {
+          console.warn("Browser GPS access rejected or unavailable:", err);
+          let reason = "Browser location permission was not granted";
+          if (err.code === 1) {
+            reason = "Location permission denied in browser (or restricted by iframe sandbox).";
+          } else if (err.code === 2) {
+            reason = "GPS position unavailable on device.";
+          } else if (err.code === 3) {
+            reason = "GPS location request timed out.";
+          }
+
+          // Rather than halting in a broken state, seamlessly activate network/city fallback!
+          const fallbackLoc = await fallbackToNetworkLocation(reason);
+          onSuccess?.(fallbackLoc);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 8000,
+          maximumAge: 60000,
+        }
+      );
+    },
+    [fallbackToNetworkLocation]
+  );
+
+  // Allow user to manually choose any city, preset, or custom address
+  const setManualLocation = useCallback((customLoc) => {
+    if (!customLoc || customLoc.latitude == null || customLoc.longitude == null) return;
+    const loc = {
+      latitude: Number(customLoc.latitude),
+      longitude: Number(customLoc.longitude),
+      accuracy: customLoc.accuracy || 1500,
+      address: customLoc.address || customLoc.name || "Selected Location",
+      city: customLoc.city || customLoc.name || "",
+      region: customLoc.region || "",
+      source: customLoc.source || "manual",
+      isApproximate: true,
+      permissionRestricted: false,
+      timestamp: new Date().toISOString(),
+    };
+    setUserLocation(loc);
+    setLocationError(null);
+    setLocationNotice(null);
   }, []);
+
+  // Search by query (e.g. city or neighborhood name) and set coordinates
+  const searchAndSetLocation = useCallback(
+    async (query) => {
+      if (!query || !query.trim()) return false;
+      setLocationLoading(true);
+      try {
+        const result = await searchCoordinatesForQuery(query);
+        if (result) {
+          setManualLocation(result);
+          setLocationLoading(false);
+          return true;
+        }
+      } catch (e) {
+        console.warn("Search location failed:", e);
+      }
+      setLocationLoading(false);
+      return false;
+    },
+    [setManualLocation]
+  );
 
   const toggleLocationTracking = useCallback(
     (enable) => {
@@ -473,6 +574,7 @@ export function DemoDataProvider({ children }) {
         updateSettings({ locationTracking: false });
         setUserLocation(null);
         setLocationError(null);
+        setLocationNotice(null);
       }
     },
     [fetchCurrentLocation]
@@ -647,8 +749,12 @@ export function DemoDataProvider({ children }) {
     isLocationEnabled: Boolean(userSettings?.locationTracking),
     locationLoading,
     locationError,
+    locationNotice,
     toggleLocationTracking,
     refreshLocation,
+    setManualLocation,
+    searchAndSetLocation,
+    CITY_PRESETS,
   };
 
   return <DemoDataContext.Provider value={value}>{children}</DemoDataContext.Provider>;

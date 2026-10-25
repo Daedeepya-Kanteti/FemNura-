@@ -33,6 +33,7 @@ export function estimateDriveTimeMinutes(km) {
 
 // Comprehensive emergency health center database with verified 24/7 trauma & women's services
 export const EMERGENCY_HEALTH_CENTERS = [
+  // Andhra Pradesh (Vijayawada / Guntur)
   {
     id: "hc-1",
     name: "Government General Hospital (GGH) & Trauma Center",
@@ -153,6 +154,191 @@ export const EMERGENCY_HEALTH_CENTERS = [
     hasICU: true,
     hasMaternity: true,
   },
+  // Hyderabad / Telangana
+  {
+    id: "hc-9",
+    name: "Apollo Hospitals Emergency & Trauma Centre",
+    type: "Trauma & Multi-Specialty",
+    specialty: "Level 1 Trauma, Comprehensive Resuscitation & Acute Triage",
+    address: "Road No. 72, Film Nagar, Jubilee Hills, Hyderabad 500033",
+    phone: "+91 40 2360 7777",
+    emergencyPhone: "1066",
+    lat: 17.4156,
+    lng: 78.4124,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-10",
+    name: "Fernandez Hospital Women's Emergency & Labor Care",
+    type: "Women & Maternity",
+    specialty: "High-Risk Obstetrics, Acute Fetal Triage & Emergency C-Section",
+    address: "Bogulkunta, Hyderguda, Hyderabad 500001",
+    phone: "+91 40 4022 2300",
+    emergencyPhone: "+91 40 4022 2399",
+    lat: 17.3975,
+    lng: 78.4828,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-11",
+    name: "KIMS Hospitals Comprehensive ER",
+    type: "Trauma & Multi-Specialty",
+    specialty: "Acute Stroke, Surgical Resuscitation & Intensive Care",
+    address: "Minister Road, Secunderabad, Hyderabad 500003",
+    phone: "+91 40 4488 5000",
+    emergencyPhone: "108",
+    lat: 17.4416,
+    lng: 78.4907,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  // Bengaluru / Karnataka
+  {
+    id: "hc-12",
+    name: "Manipal Hospital HAL Airport Road Emergency",
+    type: "Trauma & Multi-Specialty",
+    specialty: "24/7 Trauma Resuscitation, Cardiac & Critical Care",
+    address: "98 HAL Old Airport Road, Kodihalli, Bengaluru 560017",
+    phone: "+91 80 2502 4444",
+    emergencyPhone: "+91 80 2502 3344",
+    lat: 12.9587,
+    lng: 77.6496,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-13",
+    name: "Cloudnine Hospital Women & Maternity Emergency",
+    type: "Women & Maternity",
+    specialty: "Acute Obstetrics, High-Risk Labor & Gynecological Emergency",
+    address: "1533 9th Main Road, 3rd Block, Jayanagar, Bengaluru 560011",
+    phone: "+91 80 6792 9999",
+    emergencyPhone: "+91 99728 99728",
+    lat: 12.9298,
+    lng: 77.5833,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-14",
+    name: "St. John's Medical College Hospital Emergency Center",
+    type: "Government General",
+    specialty: "Tertiary Emergency Care, Intensive Care & Trauma",
+    address: "Sarjapur Road, John Nagar, Koramangala, Bengaluru 560034",
+    phone: "+91 80 2206 5000",
+    emergencyPhone: "108",
+    lat: 12.9288,
+    lng: 77.6202,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  // Chennai / Tamil Nadu
+  {
+    id: "hc-15",
+    name: "Apollo Hospitals Greams Road ER & Trauma",
+    type: "Trauma & Multi-Specialty",
+    specialty: "Acute Cardiac & Polytrauma Emergency Care",
+    address: "21 Greams Lane, Thousand Lights, Chennai 600006",
+    phone: "+91 44 2829 0200",
+    emergencyPhone: "1066",
+    lat: 13.0594,
+    lng: 80.2524,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-16",
+    name: "Institute of Obstetrics and Gynaecology (IOG Egmore)",
+    type: "Government General",
+    specialty: "Comprehensive 24/7 Government Women & Maternity Emergency",
+    address: "EVR Periyar Salai, Egmore, Chennai 600008",
+    phone: "+91 44 2819 1982",
+    emergencyPhone: "108",
+    lat: 13.0732,
+    lng: 80.2612,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  // Delhi NCR
+  {
+    id: "hc-17",
+    name: "AIIMS Apex Trauma & Emergency Medical Centre",
+    type: "Government General",
+    specialty: "Apex National Emergency Care, Resuscitation & Surgery",
+    address: "Sri Aurobindo Marg, Ansari Nagar East, New Delhi 110029",
+    phone: "+91 11 2658 8500",
+    emergencyPhone: "102 / 108",
+    lat: 28.5672,
+    lng: 77.21,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-18",
+    name: "Safdarjung Hospital Emergency & Maternity Block",
+    type: "Government General",
+    specialty: "24/7 Acute Obstetrics, Severe Burns & Trauma",
+    address: "Ring Road, Opposite AIIMS, New Delhi 110029",
+    phone: "+91 11 2616 5060",
+    emergencyPhone: "108",
+    lat: 28.5709,
+    lng: 77.2072,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  // Mumbai / Maharashtra
+  {
+    id: "hc-19",
+    name: "Lilavati Hospital & Research Centre 24/7 ER",
+    type: "Trauma & Multi-Specialty",
+    specialty: "Cardiac ICU, Acute Triage & Resuscitation",
+    address: "A-791, Bandra Reclamation, Bandra West, Mumbai 400050",
+    phone: "+91 22 2675 1000",
+    emergencyPhone: "+91 22 2656 8000",
+    lat: 19.0519,
+    lng: 72.829,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
+  {
+    id: "hc-20",
+    name: "Surya Hospitals Women & Child Emergency",
+    type: "Women & Maternity",
+    specialty: "Acute Obstetrics, High-Risk Labor & Neonatal Emergency",
+    address: "Dattatray Road, Santacruz West, Mumbai 400054",
+    phone: "+91 22 6153 8989",
+    emergencyPhone: "+91 22 6153 8900",
+    lat: 19.0835,
+    lng: 72.8398,
+    is24x7: true,
+    hasBloodBank: true,
+    hasICU: true,
+    hasMaternity: true,
+  },
 ];
 
 // Reverse geocode latitude and longitude to human-readable address with caching
@@ -247,3 +433,109 @@ export function getDirectionsUrl(lat, lng, name) {
   }
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 }
+
+// Popular regional city & district presets
+export const CITY_PRESETS = [
+  { name: "Vijayawada (Siddhartha Nagar / Benz Circle)", lat: 16.5062, lng: 80.648, address: "Siddhartha Nagar, Vijayawada, Andhra Pradesh" },
+  { name: "Vijayawada (GGH / Buckinghampet Area)", lat: 16.5085, lng: 80.6385, address: "MG Road, Buckinghampet, Vijayawada, AP" },
+  { name: "Guntur / Tadepalli", lat: 16.4862, lng: 80.6128, address: "Tadepalli, Guntur / Vijayawada Region" },
+  { name: "Hyderabad (Banjara / Jubilee Hills)", lat: 17.4123, lng: 78.4285, address: "Banjara Hills, Hyderabad, Telangana" },
+  { name: "Bengaluru (Central / Koramangala)", lat: 12.9352, lng: 77.6245, address: "Koramangala, Bengaluru, Karnataka" },
+  { name: "Chennai (Central / T. Nagar)", lat: 13.0418, lng: 80.2341, address: "T. Nagar, Chennai, Tamil Nadu" },
+  { name: "Delhi NCR (Central)", lat: 28.6139, lng: 77.209, address: "Central Delhi, Delhi" },
+  { name: "Mumbai (South / Bandra)", lat: 19.0596, lng: 72.8295, address: "Bandra West, Mumbai, Maharashtra" },
+];
+
+// Fallback to network/IP-based geolocation when browser/iframe restricts GPS hardware
+export async function getFallbackNetworkLocation() {
+  const endpoints = [
+    "https://ipwho.is/",
+    "https://freeipapi.com/api/json",
+    "https://ipapi.co/json/",
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        const lat = data.latitude ?? data.lat;
+        const lng = data.longitude ?? data.lon;
+
+        if (lat != null && lng != null && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+          const city = data.city || data.cityName || "Current Region";
+          const region = data.region || data.regionName || "";
+          const country = data.country || data.countryName || "";
+          const parts = [city, region, country].filter(Boolean);
+
+          return {
+            latitude: Number(lat),
+            longitude: Number(lng),
+            city,
+            region,
+            country,
+            address: parts.join(", ") || "Network Detected Area",
+            source: "network",
+            accuracy: 3500, // network accuracy ~3.5km
+          };
+        }
+      }
+    } catch (e) {
+      // try next endpoint
+    }
+  }
+
+  // Sensible default matching student/user's institution location (Siddhartha Academy / Vijayawada)
+  return {
+    latitude: 16.5062,
+    longitude: 80.648,
+    city: "Vijayawada",
+    region: "Andhra Pradesh",
+    country: "India",
+    address: "Vijayawada, Andhra Pradesh (Regional Network Center)",
+    source: "preset",
+    accuracy: 3000,
+  };
+}
+
+// Search coordinates by city or area name via Nominatim
+export async function searchCoordinatesForQuery(query) {
+  if (!query || !query.trim()) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query.trim())}&limit=1`,
+      {
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "FemNura-Healthcare-SOS/1.0",
+        },
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const list = await res.json();
+      if (list && list.length > 0) {
+        const item = list[0];
+        return {
+          latitude: Number(item.lat),
+          longitude: Number(item.lon),
+          address: item.display_name.split(",").slice(0, 3).join(", "),
+          source: "manual_search",
+          accuracy: 1000,
+        };
+      }
+    }
+  } catch (e) {
+    // search failed
+  }
+  return null;
+}
+

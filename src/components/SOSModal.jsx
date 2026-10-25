@@ -22,6 +22,10 @@ import {
   Radio,
   CheckCircle2,
   ShieldCheck,
+  Search,
+  Globe,
+  Building2,
+  Info,
 } from "lucide-react";
 import { useDemoData } from "../context/DemoDataContext.jsx";
 import {
@@ -40,12 +44,19 @@ export default function SOSModal({ isOpen, onClose }) {
     isLocationEnabled,
     locationLoading,
     locationError,
+    locationNotice,
     toggleLocationTracking,
     refreshLocation,
+    setManualLocation,
+    searchAndSetLocation,
+    CITY_PRESETS,
   } = useDemoData();
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [filterType, setFilterType] = useState("All"); // All, Maternity, Trauma, Government
+  const [showAreaPicker, setShowAreaPicker] = useState(false);
+  const [customSearchQuery, setCustomSearchQuery] = useState("");
+  const [searchStatus, setSearchStatus] = useState("");
 
   // Dynamically sort emergency centers based on live user GPS coordinates
   const sortedHealthCenters = useMemo(() => {
@@ -70,7 +81,8 @@ export default function SOSModal({ isOpen, onClose }) {
   const sendEmergencySMS = (contact) => {
     let locationSnippet = "";
     if (userLocation) {
-      locationSnippet = ` My live GPS location: https://maps.google.com/?q=${userLocation.latitude},${userLocation.longitude}${
+      const typeLabel = userLocation.source === "gps" ? "live GPS location" : "current area location";
+      locationSnippet = ` My ${typeLabel}: https://maps.google.com/?q=${userLocation.latitude},${userLocation.longitude}${
         userLocation.address ? ` (${userLocation.address})` : ""
       }.`;
     }
@@ -132,7 +144,7 @@ export default function SOSModal({ isOpen, onClose }) {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-plum-950">Emergency Location Services</p>
-                  <p className="text-[11px] text-plum-600">Calculates distance to nearest hospital ERs</p>
+                  <p className="text-[11px] text-plum-600">Calculates distance & drive time to nearest hospital ERs</p>
                 </div>
               </div>
 
@@ -162,27 +174,54 @@ export default function SOSModal({ isOpen, onClose }) {
 
             {/* Location Active Display */}
             {isLocationEnabled ? (
-              <div className="mt-3 pt-3 border-t border-plum-200/70 space-y-2">
+              <div className="mt-3 pt-3 border-t border-plum-200/70 space-y-2.5">
                 {locationLoading ? (
                   <div className="flex items-center gap-2 text-xs text-plum-700 bg-white/80 p-2.5 rounded-xl border border-plum-200">
                     <RefreshCw size={14} className="animate-spin text-plum-600" />
-                    <span>Acquiring satellite GPS lock & neighborhood details...</span>
+                    <span>Detecting current location and calculating hospital triage distances...</span>
                   </div>
                 ) : userLocation ? (
-                  <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs space-y-2">
+                  <div className="bg-white p-3 rounded-xl border border-plum-200 shadow-2xs space-y-2.5">
+                    {/* Notice if browser GPS hardware was denied/restricted */}
+                    {userLocation.isApproximate && userLocation.permissionRestricted && (
+                      <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                        <Info size={15} className="text-amber-700 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-bold text-amber-950">
+                            Browser GPS permission restricted or blocked by iframe
+                          </p>
+                          <p className="text-[11px] text-amber-800 mt-0.5">
+                            FemNura has automatically switched to network/area location so emergency hospital ER distances, drive times, and directions still work! You can also pick your exact city below.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-[10px] font-extrabold uppercase text-emerald-800 tracking-wider">
-                            Live Coordinates Active
+                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              userLocation.source === "gps" ? "bg-emerald-500 animate-pulse" : "bg-plum-500"
+                            }`}
+                          />
+                          <span
+                            className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                              userLocation.source === "gps" ? "text-emerald-800" : "text-plum-800"
+                            }`}
+                          >
+                            {userLocation.source === "gps"
+                              ? "Live GPS Coordinates"
+                              : userLocation.source === "manual"
+                              ? "Manual Area Selected"
+                              : "Network / Regional Location"}
                           </span>
                           <span className="text-[10px] text-plum-400">
-                            (Accurate to ±{userLocation.accuracy}m)
+                            ({userLocation.source === "gps" ? `±${userLocation.accuracy}m` : "Approx. Area"})
                           </span>
                         </div>
                         <p className="text-xs font-bold text-plum-900 truncate">
-                          📍 {userLocation.address || "Your current location"}
+                          📍 {userLocation.address || `${userLocation.latitude.toFixed(4)}°, ${userLocation.longitude.toFixed(4)}°`}
                         </p>
                         <p className="text-[11px] font-mono text-plum-500 mt-0.5">
                           {userLocation.latitude.toFixed(4)}°N, {userLocation.longitude.toFixed(4)}°E
@@ -192,44 +231,155 @@ export default function SOSModal({ isOpen, onClose }) {
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
+                          onClick={() => setShowAreaPicker((prev) => !prev)}
+                          className="px-2 py-1.5 rounded-lg bg-plum-100 hover:bg-plum-200 text-plum-900 text-xs font-bold border border-plum-300 flex items-center gap-1 cursor-pointer transition-colors"
+                          title="Change City or Area"
+                        >
+                          <Building2 size={12} />
+                          <span className="text-[11px]">{showAreaPicker ? "Close" : "Change Area"}</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={copyLiveLocationLink}
                           className="p-1.5 rounded-lg bg-lavender-50 hover:bg-lavender-100 text-plum-800 text-xs font-semibold border border-plum-200 flex items-center gap-1 cursor-pointer"
                           title="Copy Google Maps coordinate link"
                         >
                           {copiedLink ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                          <span className="text-[11px]">{copiedLink ? "Copied" : "Copy"}</span>
+                          <span className="text-[11px] hidden xs:inline">{copiedLink ? "Copied" : "Copy"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={refreshLocation}
                           className="p-1.5 rounded-lg bg-lavender-50 hover:bg-lavender-100 text-plum-800 border border-plum-200 cursor-pointer"
-                          title="Refresh GPS location"
+                          title="Retry or refresh GPS coordinates"
                         >
                           <RefreshCw size={13} />
                         </button>
                       </div>
                     </div>
+
+                    {/* Expandable City & Area Picker */}
+                    {showAreaPicker && (
+                      <div className="pt-2.5 mt-2 border-t border-plum-100 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-bold text-plum-900 uppercase tracking-wider flex items-center gap-1">
+                            <Globe size={12} className="text-plum-600" /> Select Quick City Preset:
+                          </p>
+                          <button
+                            type="button"
+                            onClick={refreshLocation}
+                            className="text-[11px] font-bold text-rose-700 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <RefreshCw size={11} /> Retry Browser GPS
+                          </button>
+                        </div>
+
+                        {/* City Preset Buttons */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {CITY_PRESETS.map((preset) => {
+                            const isCurrent =
+                              Math.abs(userLocation.latitude - preset.lat) < 0.05 &&
+                              Math.abs(userLocation.longitude - preset.lng) < 0.05;
+                            return (
+                              <button
+                                key={preset.name}
+                                type="button"
+                                onClick={() => {
+                                  setManualLocation(preset);
+                                  setShowAreaPicker(false);
+                                }}
+                                className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                                  isCurrent
+                                    ? "bg-plum-800 text-white border-plum-800 shadow-2xs"
+                                    : "bg-lavender-50/70 hover:bg-lavender-100 text-plum-900 border-plum-200"
+                                }`}
+                              >
+                                {preset.name.split(" (")[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Custom Area Search Bar */}
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              value={customSearchQuery}
+                              onChange={(e) => setCustomSearchQuery(e.target.value)}
+                              onKeyDown={async (e) => {
+                                if (e.key === "Enter" && customSearchQuery.trim()) {
+                                  setSearchStatus("Searching...");
+                                  const ok = await searchAndSetLocation(customSearchQuery);
+                                  setSearchStatus(ok ? "Area set!" : "Location not found");
+                                  if (ok) {
+                                    setTimeout(() => {
+                                      setShowAreaPicker(false);
+                                      setSearchStatus("");
+                                    }, 1000);
+                                  }
+                                }
+                              }}
+                              placeholder="Or search city, town, or area..."
+                              className="w-full text-xs px-2.5 py-1.5 pl-7 rounded-lg border border-plum-200 bg-white focus:outline-none focus:border-plum-500"
+                            />
+                            <Search size={12} className="absolute left-2.5 top-2 text-plum-400" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!customSearchQuery.trim()) return;
+                              setSearchStatus("Searching...");
+                              const ok = await searchAndSetLocation(customSearchQuery);
+                              setSearchStatus(ok ? "Area set!" : "Not found");
+                              if (ok) {
+                                setTimeout(() => {
+                                  setShowAreaPicker(false);
+                                  setSearchStatus("");
+                                }, 1000);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold transition-colors cursor-pointer shrink-0"
+                          >
+                            Set Area
+                          </button>
+                        </div>
+                        {searchStatus && (
+                          <p className="text-[10px] text-plum-600 font-medium pl-1">{searchStatus}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : locationError ? (
-                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <AlertTriangle size={14} className="text-amber-600 shrink-0" />
-                      <span>{locationError}</span>
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
+                    <div className="flex items-start gap-1.5">
+                      <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">{locationError}</p>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          Pick a city below to calculate emergency hospital distances:
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={refreshLocation}
-                      className="text-xs font-bold text-amber-800 underline shrink-0 cursor-pointer"
-                    >
-                      Retry
-                    </button>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {CITY_PRESETS.slice(0, 4).map((preset) => (
+                        <button
+                          key={preset.name}
+                          type="button"
+                          onClick={() => setManualLocation(preset)}
+                          className="px-2 py-1 rounded-lg bg-white border border-amber-300 text-amber-900 text-[11px] font-bold hover:bg-amber-100 cursor-pointer"
+                        >
+                          {preset.name.split(" (")[0]}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
             ) : (
               <div className="mt-2 text-[11px] text-plum-600 flex items-center justify-between">
                 <span>
-                  Privacy Mode: GPS is disabled. Tap toggle to calculate real distances to nearest ERs.
+                  Privacy Mode: Location is currently disabled. Turn ON to calculate real distances & drive times to nearby hospital ERs.
                 </span>
                 <button
                   type="button"

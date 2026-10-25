@@ -21,6 +21,9 @@ export default function SettingsPage() {
     userLocation,
     isLocationEnabled,
     toggleLocationTracking,
+    setManualLocation,
+    CITY_PRESETS,
+    locationNotice,
   } = useDemoData();
 
   const notif = userSettings?.notifications ?? true;
@@ -378,13 +381,57 @@ export default function SettingsPage() {
           />
         </div>
         {isLocationEnabled && userLocation && (
-          <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
-            <span>
-              📍 Active on-device GPS lock: <strong>{userLocation.address || `${userLocation.latitude.toFixed(4)}°, ${userLocation.longitude.toFixed(4)}°`}</strong>
-            </span>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-              ±{userLocation.accuracy}m
-            </span>
+          <div className="mt-4 p-4 rounded-2xl bg-lavender-50/70 border border-plum-200 text-xs text-plum-900 space-y-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      userLocation.source === "gps" ? "bg-emerald-500 animate-pulse" : "bg-plum-500"
+                    }`}
+                  />
+                  <span
+                    className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                      userLocation.source === "gps" ? "text-emerald-800" : "text-plum-800"
+                    }`}
+                  >
+                    {userLocation.source === "gps"
+                      ? "Active On-Device GPS Lock"
+                      : "Network / Area Location Active"}
+                  </span>
+                </div>
+                <p className="font-bold text-plum-950 text-xs">
+                  📍 {userLocation.address || `${userLocation.latitude.toFixed(4)}°, ${userLocation.longitude.toFixed(4)}°`}
+                </p>
+                {userLocation.isApproximate && userLocation.permissionRestricted && (
+                  <p className="text-[11px] text-plum-600 mt-1">
+                    Browser GPS hardware access was blocked or denied by the browser/iframe sandbox. Regional area coordinates are used to calculate distances to hospital ERs and triage centers.
+                  </p>
+                )}
+              </div>
+              <span className="text-[10px] font-bold text-plum-700 bg-plum-100 border border-plum-200 px-2 py-0.5 rounded-full shrink-0">
+                {userLocation.source === "gps" ? `±${userLocation.accuracy}m` : "Area Mode"}
+              </span>
+            </div>
+
+            {/* Quick City Presets */}
+            <div className="pt-2 border-t border-plum-200/60">
+              <span className="text-[10px] uppercase font-bold text-plum-600 block mb-1.5">
+                Switch City / Region:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {CITY_PRESETS?.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => setManualLocation(preset)}
+                    className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-white hover:bg-lavender-100 text-plum-900 border border-plum-200 transition-colors cursor-pointer"
+                  >
+                    {preset.name.split(" (")[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </Card>
