@@ -84,54 +84,78 @@ export default function CareCircle() {
   };
 
   const handlePrintCard = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      window.print();
-      return;
-    }
+    const html = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FemNura Emergency Medical Wallet Card - ${userName || "Patient"}</title>
+    <style>
+      @page {
+        size: auto;
+        margin: 15mm;
+      }
+      * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; color: #2e1f2d; background: #fff; }
+      .card { width: 380px; border: 2px solid #5f3860; border-radius: 14px; padding: 22px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.08); margin: 0 auto; }
+      .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+      h2 { margin: 10px 0 4px 0; font-size: 20px; color: #421845; }
+      .row { margin: 8px 0; font-size: 13px; line-height: 1.4; }
+      .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+      .val { font-weight: 600; color: #1e1120; }
+      .notice { margin-top: 16px; padding: 10px 12px; background: #fdf2f8; border-left: 3px solid #db2777; border-radius: 6px; font-size: 11px; color: #831843; font-weight: 600; }
+      .footer { font-size: 10px; color: #888; margin-top: 14px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="badge">EMERGENCY MEDICAL ID</span>
+        <strong style="color:#5f3860; font-size:15px; letter-spacing:0.5px;">FemNura</strong>
+      </div>
+      <h2>${userName || "Patient"}</h2>
+      <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:16px;">${bloodGroup}</span></div>
+      <div class="row"><span class="label">Known Conditions:</span> <span class="val">${conditions || "None declared"}</span></div>
+      <div class="row"><span class="label">Allergies:</span> <span class="val">${allergies || "None declared"}</span></div>
+      <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryContact.name ? `${primaryContact.name} (${primaryContact.relation}) - ${primaryContact.phone}` : "Not assigned"}</span></div>
+      ${secondaryContact.name ? `<div class="row"><span class="label">Secondary Contact:</span> <span class="val">${secondaryContact.name} (${secondaryContact.relation}) - ${secondaryContact.phone}</span></div>` : ""}
+      <div class="row"><span class="label">Emergency Note:</span> <span class="val">${emergencyNotes || "Call primary contact immediately."}</span></div>
+      
+      <div class="notice">
+        FIRST RESPONDERS: In an emergency, please contact the primary emergency contact above immediately.
+      </div>
+      <div class="footer">Fold and carry in wallet or purse. FemNura — Your Health. Your Priority.</div>
+    </div>
+  </body>
+</html>`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>FemNura Emergency Medical Wallet Card - ${userName || "Patient"}</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 30px; color: #2e1f2d; background: #fafafa; }
-            .card { width: 380px; border: 2px solid #5f3860; border-radius: 14px; padding: 22px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,0.1); margin: 0 auto; }
-            .badge { background: #dc2626; color: #fff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-            h2 { margin: 10px 0 4px 0; font-size: 20px; color: #421845; }
-            .row { margin: 8px 0; font-size: 13px; line-height: 1.4; }
-            .label { font-weight: bold; color: #6b4c6e; font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px; }
-            .val { font-weight: 600; color: #1e1120; }
-            .notice { margin-top: 16px; padding: 10px 12px; background: #fdf2f8; border-left: 3px solid #db2777; border-radius: 6px; font-size: 11px; color: #831843; font-weight: 600; }
-            .footer { font-size: 10px; color: #888; margin-top: 14px; text-align: center; border-top: 1px solid #eee; padding-top: 8px; }
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="badge">EMERGENCY MEDICAL ID</span>
-              <strong style="color:#5f3860; font-size:15px; letter-spacing:0.5px;">FemNura</strong>
-            </div>
-            <h2>${userName || "Patient"}</h2>
-            <div class="row"><span class="label">Blood Group:</span> <span class="val" style="color:#dc2626; font-size:16px;">${bloodGroup}</span></div>
-            <div class="row"><span class="label">Known Conditions:</span> <span class="val">${conditions || "None declared"}</span></div>
-            <div class="row"><span class="label">Allergies:</span> <span class="val">${allergies || "None declared"}</span></div>
-            <div class="row"><span class="label">Primary Emergency Contact:</span> <span class="val">${primaryContact.name ? `${primaryContact.name} (${primaryContact.relation}) - ${primaryContact.phone}` : "Not assigned"}</span></div>
-            ${secondaryContact.name ? `<div class="row"><span class="label">Secondary Contact:</span> <span class="val">${secondaryContact.name} (${secondaryContact.relation}) - ${secondaryContact.phone}</span></div>` : ""}
-            <div class="row"><span class="label">Emergency Note:</span> <span class="val">${emergencyNotes || "Call primary contact immediately."}</span></div>
-            
-            <div class="notice">
-              FIRST RESPONDERS: In an emergency, please contact the primary emergency contact above immediately.
-            </div>
-            <div class="footer">Fold and carry in wallet or purse. FemNura — Your Health. Your Priority.</div>
-          </div>
-          <script>window.onload = function() { window.print(); };</script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
+    const existingIframe = document.getElementById("femnura-wallet-card-frame");
+    if (existingIframe) existingIframe.remove();
+
+    const printFrame = document.createElement("iframe");
+    printFrame.id = "femnura-wallet-card-frame";
+    printFrame.setAttribute(
+      "style",
+      "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;z-index:-1;"
+    );
+    document.body.appendChild(printFrame);
+
+    try {
+      const frameDoc = printFrame.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(html);
+      frameDoc.close();
+
+      setTimeout(() => {
+        try {
+          printFrame.contentWindow.focus();
+          printFrame.contentWindow.print();
+        } catch {
+          window.print();
+        }
+      }, 350);
+    } catch {
+      window.print();
+    }
   };
 
   return (

@@ -68,6 +68,8 @@ export default function EmergencyView() {
     }
   }
 
+  const [copiedLink, setCopiedLink] = useState(false);
+
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
@@ -76,8 +78,13 @@ export default function EmergencyView() {
         url: window.location.href,
       }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert("Emergency link copied to clipboard!");
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 3000);
+      }).catch(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 3000);
+      });
     }
   };
 
@@ -94,9 +101,14 @@ export default function EmergencyView() {
           </Link>
           <button
             onClick={handleShare}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-300 hover:text-white px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800 transition-colors cursor-pointer"
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+              copiedLink
+                ? "bg-emerald-950/80 border-emerald-500 text-emerald-300"
+                : "bg-rose-950/60 border-rose-800 text-rose-300 hover:text-white"
+            }`}
           >
-            <Share2 size={13} /> Share Link
+            {copiedLink ? <CheckCircle size={13} className="text-emerald-400" /> : <Share2 size={13} />}
+            <span>{copiedLink ? "Link Copied!" : "Share Link"}</span>
           </button>
         </div>
 
