@@ -11,8 +11,10 @@ import {
   ShieldAlert,
   ExternalLink,
   MessageSquare,
+  Navigation,
 } from "lucide-react";
 import { useDemoData } from "../context/DemoDataContext.jsx";
+import { openNearestEmergencyCare } from "../utils/location.js";
 
 export default function RedFlagAlertBanner({
   flag, // { title, concern, id }
@@ -22,7 +24,12 @@ export default function RedFlagAlertBanner({
 }) {
   const { trustedContacts, userName } = useDemoData();
   const [showContactModal, setShowContactModal] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const primaryContact = trustedContacts[0] || null;
+
+  const handleFindNearestEmergencyCare = () => {
+    openNearestEmergencyCare(setIsLocating);
+  };
 
   if (!flag) return null;
 
@@ -88,56 +95,78 @@ export default function RedFlagAlertBanner({
               </p>
             )}
 
-            {/* Direct Emergency CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mt-3.5 pt-3 border-t border-rose-200/80">
-              {/* Call Emergency Services */}
-              <a
-                href="tel:108"
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-all hover:shadow-md cursor-pointer"
-                title="Call National Emergency Ambulance"
-              >
-                <PhoneCall size={15} className="animate-bounce" />
-                <span>Call Emergency (108 / 112)</span>
-              </a>
-
-              {/* Women's Helpline */}
-              <a
-                href="tel:181"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 shadow-2xs transition-all cursor-pointer"
-                title="Call 24/7 Women's Helpline"
-              >
-                <ShieldAlert size={14} />
-                <span>Women's Helpline (181)</span>
-              </a>
-
-              {/* Find Nearest ER */}
-              <a
-                href="https://www.google.com/maps/search/emergency+hospital+near+me"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-plum-800 border border-plum-300 hover:bg-lavender-50 shadow-2xs transition-all cursor-pointer"
-                title="Open Google Maps to locate nearest emergency department"
-              >
-                <MapPin size={14} className="text-rose-600" />
-                <span>Find Nearest Emergency Room</span>
-                <ExternalLink size={12} className="text-plum-400" />
-              </a>
-
-              {/* Notify Emergency Contacts */}
-              <button
-                type="button"
-                onClick={() => setShowContactModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-lavender-100 hover:bg-lavender-200 text-plum-900 border border-lavender-300 shadow-2xs transition-all cursor-pointer"
-                title="Notify primary and trusted contacts from your Care Circle"
-              >
-                <Users size={14} className="text-plum-700" />
-                <span>Notify Emergency Contacts</span>
-                {primaryContact && (
-                  <span className="text-[10px] bg-plum-800 text-white px-1.5 py-0.2 rounded-full font-semibold">
-                    {primaryContact.name}
+            {/* Direct Emergency SOS & Hospital Locator Section */}
+            <div className="mt-4 pt-3.5 border-t border-rose-200/90 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-wrap">
+                {/* Prominent Hospital Locator CTA with Live Radar Indicator */}
+                <button
+                  type="button"
+                  onClick={handleFindNearestEmergencyCare}
+                  disabled={isLocating}
+                  className="inline-flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 active:scale-[0.98] text-white shadow-md shadow-rose-600/30 transition-all cursor-pointer group shrink-0"
+                  title="Find Nearest Emergency Care using live device GPS"
+                >
+                  {/* Subtle pulsating live-radar indicator */}
+                  <span className="relative flex h-3 w-3 items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-80" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
                   </span>
-                )}
-              </button>
+                  <span>{isLocating ? "Locating Nearest Hospitals..." : "Find Nearest Emergency Care"}</span>
+                  <ExternalLink size={14} className="text-rose-200 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                {/* Quick-Dial Emergency Hotlines (108 / 112 / 181) as Fallbacks */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href="tel:108"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 shadow-2xs transition-all cursor-pointer"
+                    title="Call 108 Emergency Ambulance"
+                  >
+                    <PhoneCall size={13} className="text-rose-600" />
+                    <span>108 (Ambulance)</span>
+                  </a>
+
+                  <a
+                    href="tel:112"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 shadow-2xs transition-all cursor-pointer"
+                    title="Call 112 National Emergency"
+                  >
+                    <PhoneCall size={13} className="text-rose-600" />
+                    <span>112 (National ER)</span>
+                  </a>
+
+                  <a
+                    href="tel:181"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white text-rose-700 border border-rose-300 hover:bg-rose-50 shadow-2xs transition-all cursor-pointer hidden sm:inline-flex"
+                    title="Call 24/7 Women's Helpline"
+                  >
+                    <ShieldAlert size={13} />
+                    <span>181 (Helpline)</span>
+                  </a>
+
+                  {/* Notify Emergency Contacts */}
+                  <button
+                    type="button"
+                    onClick={() => setShowContactModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-lavender-100 hover:bg-lavender-200 text-plum-900 border border-lavender-300 shadow-2xs transition-all cursor-pointer"
+                    title="Notify primary and trusted contacts from your Care Circle"
+                  >
+                    <Users size={13} className="text-plum-700" />
+                    <span className="hidden xs:inline">Notify Contacts</span>
+                    {primaryContact && (
+                      <span className="text-[10px] bg-plum-800 text-white px-1.5 py-0.2 rounded-full font-semibold">
+                        {primaryContact.name}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Informative Status Label */}
+              <p className="text-[11px] text-plum-600 flex items-center gap-1.5 font-medium">
+                <Navigation size={12} className="text-rose-500 shrink-0" />
+                <span>Uses device GPS for real-time routing (No Google Maps API key required)</span>
+              </p>
             </div>
           </div>
         </div>

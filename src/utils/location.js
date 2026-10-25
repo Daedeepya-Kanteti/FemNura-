@@ -539,3 +539,56 @@ export async function searchCoordinatesForQuery(query) {
   return null;
 }
 
+// Native live geolocation tracking to open nearest emergency care in Google Maps
+// Completely removes dependency on any API key or paid Google Maps SDK
+export function openNearestEmergencyCare(onLocatingChange) {
+  if (typeof window === "undefined") return;
+
+  const openFallback = () => {
+    window.open("https://www.google.com/maps/search/emergency+hospital+near+me", "_blank");
+    onLocatingChange?.(false);
+  };
+
+  if (!navigator.geolocation) {
+    openFallback();
+    return;
+  }
+
+  onLocatingChange?.(true);
+
+  let didRespond = false;
+  const timeoutId = setTimeout(() => {
+    if (!didRespond) {
+      didRespond = true;
+      openFallback();
+    }
+  }, 6000);
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      if (didRespond) return;
+      didRespond = true;
+      clearTimeout(timeoutId);
+      onLocatingChange?.(false);
+      const { latitude, longitude } = pos.coords;
+      window.open(
+        `https://www.google.com/maps/search/emergency+hospitals/@${latitude},${longitude},14z`,
+        "_blank"
+      );
+    },
+    (err) => {
+      if (didRespond) return;
+      didRespond = true;
+      clearTimeout(timeoutId);
+      console.warn("Native geolocation permission denied or unavailable, opening fallback search:", err);
+      openFallback();
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 5500,
+      maximumAge: 30000,
+    }
+  );
+}
+
+

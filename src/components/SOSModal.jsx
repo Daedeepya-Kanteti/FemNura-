@@ -32,6 +32,7 @@ import {
   getSortedHealthCenters,
   getDirectionsUrl,
   formatDistance,
+  openNearestEmergencyCare,
 } from "../utils/location.js";
 
 export default function SOSModal({ isOpen, onClose }) {
@@ -57,6 +58,7 @@ export default function SOSModal({ isOpen, onClose }) {
   const [showAreaPicker, setShowAreaPicker] = useState(false);
   const [customSearchQuery, setCustomSearchQuery] = useState("");
   const [searchStatus, setSearchStatus] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
 
   // Dynamically sort emergency centers based on live user GPS coordinates
   const sortedHealthCenters = useMemo(() => {
@@ -377,17 +379,49 @@ export default function SOSModal({ isOpen, onClose }) {
                 ) : null}
               </div>
             ) : (
-              <div className="mt-2 text-[11px] text-plum-600 flex items-center justify-between">
-                <span>
-                  Privacy Mode: Location is currently disabled. Turn ON to calculate real distances & drive times to nearby hospital ERs.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => toggleLocationTracking(true)}
-                  className="font-bold text-plum-800 hover:text-plum-950 underline shrink-0 cursor-pointer ml-2"
-                >
-                  Enable Location
-                </button>
+              <div className="mt-2 text-[11px] text-plum-600 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span>
+                    Privacy Mode: Device GPS is off. You can enable GPS or pick your city directly to calculate ER distances:
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleLocationTracking(true)}
+                      className="font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+                    >
+                      Turn On GPS
+                    </button>
+                    <span className="text-plum-300">•</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggleLocationTracking(true);
+                        setShowAreaPicker(true);
+                      }}
+                      className="font-bold text-plum-800 hover:text-plum-950 underline cursor-pointer"
+                    >
+                      Change Area
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick 1-tap city selection buttons right from Privacy Mode */}
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {CITY_PRESETS?.slice(0, 5).map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => {
+                        toggleLocationTracking(true);
+                        setManualLocation(preset);
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-white hover:bg-lavender-100 text-plum-900 border border-plum-200 text-[10px] font-bold shadow-2xs transition-colors cursor-pointer"
+                    >
+                      📍 {preset.name.split(" (")[0]}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -438,19 +472,58 @@ export default function SOSModal({ isOpen, onClose }) {
               <p className="text-xs font-bold uppercase tracking-wider text-plum-900 flex items-center gap-1.5">
                 <MapPin size={14} className="text-rose-600" /> Nearest Hospital ERs & Triage Centers
               </p>
-              <a
-                href={
-                  userLocation
-                    ? `https://www.google.com/maps/search/emergency+hospital/@${userLocation.latitude},${userLocation.longitude},14z`
-                    : "https://www.google.com/maps/search/emergency+hospital+near+me"
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-semibold text-rose-700 hover:text-rose-900 flex items-center gap-1"
+              <button
+                type="button"
+                onClick={() => openNearestEmergencyCare(setIsLocating)}
+                className="text-xs font-semibold text-rose-700 hover:text-rose-900 flex items-center gap-1 cursor-pointer"
               >
                 <span>Live Map Search</span>
                 <ExternalLink size={12} />
-              </a>
+              </button>
+            </div>
+
+            {/* Direct 1-Tap Live Geolocation Hospital Finder */}
+            <div className="mb-3.5 p-3.5 rounded-2xl bg-gradient-to-r from-rose-50 via-white to-rose-50 border-2 border-rose-300/90 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-600" />
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-800">
+                      Live Hospital Radar
+                    </span>
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-bold text-plum-950 leading-snug">
+                    Launch Instant GPS Emergency Routing
+                  </h4>
+                  <p className="text-[11px] text-plum-600 mt-0.5">
+                    Uses native device GPS to locate closest 24/7 hospitals on Google Maps without any API keys.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openNearestEmergencyCare(setIsLocating)}
+                  disabled={isLocating}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 active:scale-[0.98] text-white shadow-sm shadow-rose-600/30 transition-all cursor-pointer group shrink-0"
+                  title="Find Nearest Emergency Care using live device GPS"
+                >
+                  <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-80" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                  </span>
+                  <span>{isLocating ? "Locating..." : "Find Nearest Emergency Care"}</span>
+                  <ExternalLink size={13} className="text-rose-200 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+
+              {/* Informative Status Label */}
+              <p className="text-[10px] text-plum-500 mt-2 pt-2 border-t border-rose-100 flex items-center gap-1.5 font-medium">
+                <Navigation size={11} className="text-rose-600 shrink-0" />
+                <span>Uses device GPS for real-time routing (No Google Maps API key required)</span>
+              </p>
             </div>
 
             {/* Filter Pills */}
