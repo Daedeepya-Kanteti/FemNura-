@@ -17,7 +17,6 @@ import {
   User,
   Building2,
   FileCheck,
-  Printer,
   Sparkles,
   ShieldCheck,
   HelpCircle,
@@ -1170,15 +1169,7 @@ CONFIDENTIAL HEALTH RECORD • STORED IN FEMNURA LOCAL VAULT
                       <Eye size={16} />
                     </button>
                     <button
-                      onClick={() => printDocument(f)}
-                      className="p-1.5 rounded-lg text-plum-600 hover:text-plum-950 hover:bg-lavender-100 transition-colors cursor-pointer"
-                      title="Print or export PDF"
-                      aria-label="Print document"
-                    >
-                      <Printer size={16} />
-                    </button>
-                    <button
-                      onClick={() => downloadFile(f)}
+                      onClick={() => downloadPrintableReport(f)}
                       className="p-1.5 rounded-lg text-plum-600 hover:text-plum-950 hover:bg-lavender-100 transition-colors cursor-pointer"
                       title="Download document"
                       aria-label="Download document"
@@ -1545,31 +1536,24 @@ CONFIDENTIAL HEALTH RECORD • STORED IN FEMNURA LOCAL VAULT
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                   <button
                     type="button"
-                    onClick={() => printDocument(activePreviewDoc)}
-                    className="px-3.5 py-2 rounded-xl bg-plum-700 hover:bg-plum-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    title="Print directly or save as PDF"
-                  >
-                    <Printer size={15} />
-                    <span>Print Report</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => downloadPrintableReport(activePreviewDoc)}
-                    className="px-3.5 py-2 rounded-xl border border-plum-300 bg-white hover:bg-plum-50 text-plum-800 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                    title="Download self-contained printable report"
-                  >
-                    <FileCheck size={15} />
-                    <span>Save Printable HTML</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => downloadFile(activePreviewDoc)}
-                    className="px-3.5 py-2 rounded-xl border border-plum-200 bg-white hover:bg-plum-50 text-plum-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                    title="Download original file or text notes"
+                    className="px-4 py-2 rounded-xl bg-plum-800 hover:bg-plum-900 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    title="Download document record"
                   >
                     <Download size={15} />
-                    <span>Download File</span>
+                    <span>Download</span>
                   </button>
+                  {activePreviewDoc.dataUrl && (
+                    <button
+                      type="button"
+                      onClick={() => downloadFile(activePreviewDoc)}
+                      className="px-3.5 py-2 rounded-xl border border-plum-200 bg-white hover:bg-plum-50 text-plum-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Download original file attachment"
+                    >
+                      <Download size={15} />
+                      <span>Original File</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>

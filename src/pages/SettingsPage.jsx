@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { Download, Trash2, ShieldCheck, Check, Globe, FileText, Printer, FileDown } from "lucide-react";
+import { Download, Trash2, ShieldCheck, Check, FileText } from "lucide-react";
 import PageHeader from "../components/PageHeader.jsx";
 import { Card, Disclaimer, Button, Badge } from "../components/UI.jsx";
 import { useDemoData } from "../context/DemoDataContext.jsx";
-import { printHtmlDirect, downloadPrintableHtmlFile } from "../utils/printHelper.js";
+import { downloadPrintableHtmlFile } from "../utils/printHelper.js";
 
 export default function SettingsPage() {
   const {
@@ -29,35 +29,9 @@ export default function SettingsPage() {
 
   const notif = userSettings?.notifications ?? true;
   const dataSharing = userSettings?.dataSharing ?? false;
-  const language = userSettings?.language || "English";
-
-  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   const setNotif = (val) => updateSettings({ notifications: typeof val === "function" ? val(notif) : val });
   const setDataSharing = (val) => updateSettings({ dataSharing: typeof val === "function" ? val(dataSharing) : val });
-  const setLanguage = (val) => updateSettings({ language: val });
-
-  const exportAllData = () => {
-    const data = {
-      exportDate: new Date().toISOString(),
-      user: { name: userName, email: userEmail, accountId: currentAccount?.id },
-      emergencyProfile,
-      trustedContacts,
-      symptoms,
-      moods,
-      cycleEntries,
-      reminders,
-      doctorSessions,
-      settings: userSettings,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `femnura-health-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const generateHealthReportHtml = () => {
     const primaryContact = trustedContacts[0] || { name: "Not assigned", phone: "N/A", relation: "N/A" };
@@ -156,7 +130,7 @@ export default function SettingsPage() {
               <strong>Patient:</strong> ${userName || "Patient"}<br/>
               <strong>Email / ID:</strong> ${userEmail || currentAccount?.id || "N/A"}<br/>
               <strong>Export Date:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}<br/>
-              <strong>Language / Locale:</strong> ${language}
+              <strong>Language / Locale:</strong> English
             </div>
           </div>
 
@@ -331,13 +305,6 @@ export default function SettingsPage() {
     return html;
   };
 
-  const exportHealthDataAsPDF = () => {
-    setPdfGenerating(true);
-    const html = generateHealthReportHtml();
-    printHtmlDirect(html, `FemNura Complete Health Record - ${userName || "Patient"}`, `FemNura-Health-Record-${(userName || "Patient").replace(/\s+/g, "_")}.html`);
-    setTimeout(() => setPdfGenerating(false), 1200);
-  };
-
   const downloadHealthReportAsHtml = () => {
     const html = generateHealthReportHtml();
     downloadPrintableHtmlFile(html, `FemNura-Health-Record-${(userName || "Patient").replace(/\s+/g, "_")}.html`);
@@ -453,32 +420,6 @@ export default function SettingsPage() {
       </Card>
 
       <Card className="p-6 sm:p-7 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Globe size={18} className="text-plum-600" />
-          <h2 className="font-display text-lg font-semibold text-plum-800">Language & Regional Preferences</h2>
-        </div>
-        <p className="text-xs text-plum-500 mb-4">Choose your preferred reading and interface language.</p>
-        <div className="flex flex-wrap gap-2">
-          {["English", "Hindi", "Spanish", "French", "Arabic"].map((l) => (
-            <button
-              key={l}
-              onClick={() => setLanguage(l)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${
-                language === l
-                  ? "bg-plum-700 text-white border-plum-700 shadow-2xs"
-                  : "bg-white text-plum-600 border-plum-200 hover:border-plum-400"
-              }`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-plum-400 mt-3">
-          Active preference: <strong className="text-plum-700">{language}</strong>. Date formatting and reminders adapt to this regional locale.
-        </p>
-      </Card>
-
-      <Card className="p-6 sm:p-7 mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display text-lg font-semibold text-plum-800">Your Data Sovereignty</h2>
           <Badge tone="sage">Your Data Stays Yours</Badge>
@@ -487,38 +428,17 @@ export default function SettingsPage() {
           FemNura stores your symptoms, moods, cycle details, and documents directly in your private device storage partition. You can export a full copy of your health records at any time.
         </p>
 
-        <div className="flex flex-wrap items-center gap-3 pt-2">
+        <div className="pt-2">
           <Button
             variant="primary"
             size="md"
-            onClick={exportHealthDataAsPDF}
-            disabled={pdfGenerating}
-            className="gap-2 bg-plum-800 hover:bg-plum-900 shadow-sm text-sm font-bold text-white px-5 py-3 cursor-pointer"
-          >
-            <Printer size={17} className="text-amber-300" />
-            {pdfGenerating ? "Preparing Clinical Dossier..." : "Print / Export Complete Health Record"}
-          </Button>
-
-          <Button
-            variant="outline"
-            size="md"
             onClick={downloadHealthReportAsHtml}
-            className="gap-2 border-plum-300 text-plum-800 hover:bg-plum-50 text-sm font-semibold px-4 py-3 cursor-pointer"
-            title="Download self-contained printable report"
+            className="gap-2 bg-plum-800 hover:bg-plum-900 shadow-sm text-sm font-bold text-white px-6 py-3 cursor-pointer"
+            title="Download complete health record"
           >
             <Download size={16} />
-            <span>Save Printable HTML</span>
+            <span>Download</span>
           </Button>
-
-          <button
-            type="button"
-            onClick={exportAllData}
-            className="text-xs text-plum-500 hover:text-plum-900 underline ml-2 cursor-pointer flex items-center gap-1"
-            title="Download raw JSON data format"
-          >
-            <FileDown size={13} />
-            <span>Raw JSON backup</span>
-          </button>
         </div>
       </Card>
 

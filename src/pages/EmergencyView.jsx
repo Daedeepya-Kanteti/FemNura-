@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   CheckCircle,
   Share2,
-  Printer,
   RefreshCw,
   Sparkles,
   Download,
@@ -238,17 +237,9 @@ export default function EmergencyView() {
             </button>
 
             <button
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-plum-700/80 bg-plum-950/70 text-plum-200 hover:text-white transition-colors cursor-pointer"
-              title="Print Emergency Alert Wallet Card"
-            >
-              <Printer size={13} /> Print Card
-            </button>
-
-            <button
               onClick={handleDownload}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 text-slate-300 hover:text-white transition-colors cursor-pointer"
-              title="Download Printable Card HTML / PDF"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-plum-700/80 bg-plum-950/70 text-plum-200 hover:text-white transition-colors cursor-pointer"
+              title="Download Emergency Medical Alert Card"
             >
               <Download size={13} /> Download
             </button>

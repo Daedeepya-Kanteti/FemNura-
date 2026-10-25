@@ -7,7 +7,6 @@ import {
   Trash2,
   Phone,
   ShieldAlert,
-  Printer,
   Edit2,
   Check,
   Heart,
@@ -355,25 +354,14 @@ export default function CareCircle() {
                 </Link>
 
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadCard}
-                  className="w-full justify-center text-xs font-semibold gap-2 text-plum-800 border-plum-300 hover:bg-plum-50 py-2.5 cursor-pointer"
-                  title="Download emergency medical ID card"
-                >
-                  <Download size={14} className="text-plum-700 shrink-0" />
-                  <span>Download card</span>
-                </Button>
-
-                <Button
                   variant="primary"
                   size="sm"
-                  onClick={handlePrintCard}
+                  onClick={handleDownloadCard}
                   className="w-full justify-center text-xs font-semibold gap-2 bg-plum-800 hover:bg-plum-900 text-white shadow-xs py-2.5 cursor-pointer"
-                  title="Print emergency medical ID card"
+                  title="Download emergency medical ID card"
                 >
-                  <Printer size={14} className="shrink-0" />
-                  <span>Print Card</span>
+                  <Download size={14} className="shrink-0" />
+                  <span>Download</span>
                 </Button>
               </div>
             </div>

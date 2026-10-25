@@ -4,7 +4,6 @@ import {
   Stethoscope,
   Sparkles,
   Loader2,
-  Printer,
   Copy,
   Check,
   Calendar,
@@ -282,20 +281,12 @@ export default function DoctorQGen() {
                     {copied ? "Copied!" : "Copy Questions"}
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadPrep(result)}
-                    className="gap-1.5 border-plum-300 text-plum-800 hover:bg-plum-50"
-                  >
-                    <Download size={14} /> Download HTML
-                  </Button>
-                  <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => handlePrint(result)}
-                    className="gap-1.5 bg-plum-800 hover:bg-plum-900"
+                    onClick={() => handleDownloadPrep(result)}
+                    className="gap-1.5 bg-plum-800 hover:bg-plum-900 text-white"
                   >
-                    <Printer size={14} /> Print / Save as PDF
+                    <Download size={14} /> Download
                   </Button>
                 </div>
               </div>
@@ -378,16 +369,9 @@ export default function DoctorQGen() {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => handlePrint(s)}
-                    className="p-2 text-plum-500 hover:text-plum-900 hover:bg-lavender-50 rounded-lg transition-colors focus-ring"
-                    title="Print / Save this past session"
-                  >
-                    <Printer size={16} />
-                  </button>
-                  <button
                     onClick={() => handleDownloadPrep(s)}
-                    className="p-2 text-plum-500 hover:text-plum-900 hover:bg-lavender-50 rounded-lg transition-colors focus-ring"
-                    title="Download printable HTML"
+                    className="p-2 text-plum-500 hover:text-plum-900 hover:bg-lavender-50 rounded-lg transition-colors focus-ring cursor-pointer"
+                    title="Download session summary"
                   >
                     <Download size={16} />
                   </button>
